@@ -1,0 +1,516 @@
+#!/bin/bash
+#==============================================================================
+#TITLE:            job
+#DESCRIPTION:      This script transfers files from a ftp to a smb share
+#AUTHOR:           Louis Ouellet
+#DATE:             2020-11-12
+#VERSION:          1.1-1
+
+#==============================================================================
+# BASH SETUP
+#==============================================================================
+
+# Initialize Timer
+SECOND=0
+
+# Script name
+scriptname=$(echo $0 | sed -e 's@.*/@@')
+
+# Script Personalisation
+Title=""
+help_options="
+-v                     => Enable Reporting Mode
+                          Input commands sent are stored in ${logFile}
+-e                     => Compile errors and warnings after execution
+-d                     => Set report destination email
+-r                     => Send report via email
+-c                     => Disable all formatting
+-f                     => Specify a FTP ex: \"ftp.domain.com username password\"
+-s                     => Specify a SMB ex: \"0.0.0.0 shareName destinationDirectory username password\"
+"
+help_functions="
+"
+
+# Set Bash
+set -o pipefail
+
+# SETS LOCALE
+# Updated to en_US to support
+#export LC_ALL=en_US.UTF-8 > /dev/null 2>&1 || export LC_ALL=en_GB.UTF-8 > /dev/null 2>&1 || export LC_ALL=C.UTF-8 > /dev/null 2>&1
+
+#==============================================================================
+# FORMATTING
+#==============================================================================
+
+function format(){
+  # COLORS
+  blackText=$(tput setaf 0)   # Black
+  redText=$(tput setaf 1)     # Red
+  greenText=$(tput setaf 2)   # Green
+  yellowText=$(tput setaf 3)  # Yellow
+  blueText=$(tput setaf 4)    # Blue
+  magentaText=$(tput setaf 5) # Magenta
+  cyanText=$(tput setaf 6)    # Cyan
+  whiteText=$(tput setaf 7)   # White
+  resetText=$(tput sgr0)      # Reset to default color
+
+  # STYLES
+  boldText=$(tput bold)
+  blinkingText=$(tput blink)
+  dimText=$(tput dim)
+}
+
+function clrformat(){
+  # COLORS
+  blackText=
+  redText=
+  greenText=
+  yellowText=
+  blueText=
+  magentaText=
+  cyanText=
+  whiteText=
+  resetText=
+
+  # STYLES
+  boldText=
+  blinkingText=
+  dimText=
+}
+
+#==============================================================================
+# Elements
+#==============================================================================
+
+function elements(){
+  # CHECK BOXES
+  checkBoxGood="[${greenText}✓${resetText}]"       # Good
+  checkBoxBad="[${redText}✗${resetText}]"          # Bad
+  checkBoxQuestion="[${magentaText}?${resetText}]"  # Question / ?
+  checkBoxInfo="[${cyanText}i${resetText}]"      # Info / i
+  checkBoxOutput="[${yellowText}!${resetText}]"      # Output / !
+
+  # Current Date & Time
+  PDATE(){
+    printf "[$(date '+%Y-%m-%d %H:%M:%S')]"
+  }
+
+  # Log Types
+  INFO=$checkBoxInfo
+  OUTPUT=$checkBoxOutput
+  SUCCESS=$checkBoxGood
+  ERROR=$checkBoxBad
+  WARNING=$checkBoxOutput
+
+  # Log Actions
+  CHECK="[CHECK]"
+  START="[START]"
+  TIMED="[TIMED]"
+  RUN="[ RUN ]"
+  EMPT="[     ]"
+  OUT="[ OUT ]"
+  VAR="[ VAR ]"
+}
+
+#==============================================================================
+# HELPERS
+#==============================================================================
+
+function help(){
+  if [ "$DEBUG" = "true" ]; then
+    echo "Help" | dbg i s
+  fi
+  echo -e "
+Usage: ./$scriptname [options] IP/FQDN
+
+Options:
+$help_options
+"
+}
+
+function error(){
+  printf "FATAL ERROR: $1\n"
+  help
+  exit 0
+}
+
+function dbg(){
+  if [ "$1" != "" ] && [ "$2" != "" ]; then
+    case "$1" in
+      info|i)
+        TYPE=$INFO
+        ;;
+      success|s)
+        TYPE=$SUCCESS
+        ;;
+      error|e)
+        TYPE=$ERROR
+        ;;
+      output|o)
+        TYPE=$OUTPUT
+        ;;
+      warning|w)
+        TYPE=$WARNING
+        ;;
+      question|q)
+        TYPE=$checkBoxQuestion
+        ;;
+    esac
+    case "$2" in
+      check|c|test|t)
+        ACTION=$CHECK
+        ;;
+      start|s)
+        ACTION=$START
+        ;;
+      run|r)
+        ACTION=$RUN
+        ;;
+      empty|e)
+        ACTION=$EMPT
+        ;;
+      output|o)
+        ACTION=$OUT
+        ;;
+      timed|t)
+        ACTION=$TIMED
+        ;;
+      variable|var|v)
+        ACTION=$VAR
+        ;;
+    esac
+    while read DCMD; do
+      if [ "$3" != "" ]; then
+        LogFile=$3
+      fi
+      if [ "$DEBUG" = "true" ]; then
+        printf "${TYPE}$(PDATE)${ACTION} ${DCMD}\n" | tee -a $logFile
+      else
+        printf "${TYPE}$(PDATE)${ACTION} ${DCMD}\n"
+      fi
+    done
+  else
+    error "Missing Argument(s)"
+  fi
+}
+
+function exec(){
+  if [ "$1" != "" ]; then
+    if [ "$DEBUG" = "true" ]; then
+      echo "exec $1" | dbg i s
+      if eval $1 2>&1 | dbg o o;then
+        echo "$1" | dbg s r
+      else
+        echo "$1" | dbg e r
+      fi
+    else
+      eval $1
+    fi
+  else
+    error "Missing Argument(s)"
+  fi
+}
+
+function pkg(){
+  if [ "$1" != "" ]; then
+    if [ "$DEBUG" = "true" ]; then
+      echo "pkg $1" | dbg i s
+    fi
+    if [ $(dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+      exec "sudo apt-get update"
+      exec "sudo apt-get install --fix-missing $1 -y"
+    fi
+  else
+    error "Missing Argument(s)"
+  fi
+}
+
+function send(){
+  exec "echo \"$2\" | s-nail -s \"$1\" -S smtp-use-ssl -S ssl-rand-file=/tmp/mail.entropy -S smtp-auth=login -S smtp=\"smtps://${smtpHost}:${smtpPort}\" -S from=\"${msgFrom}(${msgName})\" -S smtp-auth-user=\"${smtpUser}\" -S smtp-auth-password=\"${smtpPass}\" -S ssl-verify=ignore -a \"$logFile\" ${msgTo}"
+}
+
+#==============================================================================
+# SETTINGS
+#==============================================================================
+
+function import(){
+  smtpHost=$(jq -r '.smtp.host' settings.json)
+  smtpPort=$(jq -r '.smtp.port' settings.json)
+	smtpUser=$(jq -r '.smtp.username' settings.json)
+	smtpPass=$(jq -r '.smtp.password' settings.json)
+	msgName=$(jq -r '.send.name' settings.json)
+	msgFrom=$(jq -r '.send.from' settings.json)
+  msgTo=$(jq -r '.send.to' settings.json)
+	smbHost=$(jq -r '.smb.host' settings.json)
+	smbShare=$(jq -r '.smb.share' settings.json)
+  smbDest=$(jq -r '.smb.destination' settings.json)
+	smbUser=$(jq -r '.smb.username' settings.json)
+	smbPass=$(jq -r '.smb.password' settings.json)
+  ftpHost=$(jq -r '.ftp.host' settings.json)
+	ftpPort=$(jq -r '.ftp.port' settings.json)
+	ftpUser=$(jq -r '.ftp.username' settings.json)
+	ftpPass=$(jq -r '.ftp.password' settings.json)
+  logDir=$(jq -r '.logs.directory' settings.json)
+  logFile="${logDir}$(date +%s%N).log"
+	if [ $smtpHost == null ]; then smtpHost=; fi
+	if [ $smtpPort == null ]; then smtpPort=; fi
+	if [ $smtpUser == null ]; then smtpUser=; fi
+	if [ $smtpPass == null ]; then smtpPass=; fi
+	if [ $msgName == null ]; then msgName=; fi
+	if [ $msgFrom == null ]; then msgFrom=; fi
+	if [ $msgTo == null ]; then msgTo=; fi
+	if [ $smbHost == null ]; then smbHost=; fi
+	if [ $smbShare == null ]; then smbShare=; fi
+	if [ $smbDest == null ]; then smbDest=; fi
+	if [ $smbUser == null ]; then smbUser=; fi
+	if [ $smbPass == null ]; then smbPass=; fi
+	if [ $ftpHost == null ]; then ftpHost=; fi
+	if [ $ftpPort == null ]; then ftpPort=; fi
+	if [ $ftpUser == null ]; then ftpUser=; fi
+	if [ $ftpPass == null ]; then ftpPass=; fi
+}
+
+#==============================================================================
+# FUNTIONS
+#==============================================================================
+
+function prep(){
+	exec "mkdir -p /tmp/share/ftp"
+	exec "mkdir -p /tmp/share/smb"
+}
+
+function getFTP(){
+	if [ "$DISPLAY" != "" ]; then
+		input=$(yad --fixed --borders=15 --width=400 --form --title="FTP Settings" --separator=" " \
+			--field="Host" \
+			--field="Port" \
+			--field="Username" \
+			--field="Password" \
+			"$ftpHost" \
+			"$ftpPort" \
+			"$ftpUser" \
+			"$ftpPass" \
+		)
+		ftpHost=$(echo ${input} | awk '{ print $1 }')
+		ftpPort=$(echo ${input} | awk '{ print $2 }')
+		ftpUser=$(echo ${input} | awk '{ print $3 }')
+		ftpPass=$(echo ${input} | awk '{ print $4 }')
+	else
+		printf "[FTP Setting]\n"
+		printf "Host: "
+		read ftpHost
+		printf "Port: "
+		read ftpPort
+		printf "Username: "
+		read ftpUser
+		printf "Password: "
+		read ftpPass
+	fi
+}
+
+function getSMB(){
+	if [ "$DISPLAY" != "" ]; then
+		input=$(yad --fixed --borders=15 --width=400 --form --title="SMB Settings" --separator=" " \
+			--field="Host" \
+			--field="Share" \
+			--field="Destination" \
+			--field="Username" \
+			--field="Password" \
+			"$smbHost" \
+			"$smbShare" \
+			"$smbDest" \
+			"$smbUser" \
+			"$smbPass" \
+		)
+		smbHost=$(echo ${input} | awk '{ print $1 }')
+		smbShare=$(echo ${input} | awk '{ print $2 }')
+		smbDest=$(echo ${input} | awk '{ print $3 }')
+		smbUser=$(echo ${input} | awk '{ print $4 }')
+		smbPass=$(echo ${input} | awk '{ print $5 }')
+	else
+		printf "[SMB Setting]\n"
+		printf "Host: "
+		read smbHost
+		printf "Share: "
+		read smbShare
+		printf "Destination: "
+		read smbDest
+		printf "Username: "
+		read smbUser
+		printf "Password: "
+		read smbPass
+	fi
+}
+
+function mountFTP(){
+	if mount | grep /tmp/share/ftp > /dev/null;then
+		exec "sudo umount -lf /tmp/share/ftp"
+	fi
+	exec "sudo curlftpfs ${ftpUser}:${ftpPass}@${ftpHost}:${ftpPort} /tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
+}
+
+function mountSMB(){
+	if mount | grep /tmp/share/smb > /dev/null;then
+		exec "sudo umount -lf /tmp/share/smb"
+	fi
+	exec "sudo mount -t cifs -o rw,uid=$(id -u $USER),gid=$(id -g $USER),username=${smbUser},password=${smbPass} //${smbHost}/${smbShare} /tmp/share/smb"
+}
+
+function umountALL(){
+	if mount | grep /tmp/share/ftp > /dev/null;then
+		exec "sudo umount -lf /tmp/share/ftp"
+	fi
+	if mount | grep /tmp/share/smb > /dev/null;then
+		exec "sudo umount -lf /tmp/share/smb"
+	fi
+}
+
+function cleanTMP(){
+	exec "find /tmp -type f -atime +10 -delete 2>/dev/null"
+}
+
+function start(){
+	exec "rsync -av --progress --exclude logs/ --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
+	exec "cd /tmp/share/ftp/"
+	exec "mkdir -p /tmp/share/ftp/archives/"
+	for i in *; do
+		if [ $debug = "true" ]; then
+			echo "Processing file $i" | Debug i s
+		fi
+		if [[ -d $i ]]; then
+			if [ $debug = "true" ]; then
+				echo "$i is a directory" | Debug i c
+			fi
+		elif [[ -f $i ]]; then
+			if [ $debug = "true" ]; then
+				echo "$i is a file" | Debug i c
+			fi
+			FTP_CheckSUM=($(md5sum "/tmp/share/ftp/$i"))
+			SMB_CheckSUM=($(md5sum "/tmp/share/smb/${smbDest}/$i"))
+			if [ $debug = "true" ]; then
+				echo "Validating file $i" | Debug i c
+			fi
+			if [ "$FTP_CheckSUM" = "$SMB_CheckSUM" ]; then
+				if [ $debug = "true" ]; then
+					echo "Validating file $i" | Debug s c
+				fi
+				exec "cp -v \"/tmp/share/ftp/$i\" \"/tmp/share/ftp/archives/$i\""
+				exec "rm -v \"/tmp/share/ftp/$i\""
+				exec "mv -v \"/tmp/share/smb/${smbDest}/$i\" \"/tmp/share/smb/${smbDest}/validated/$i\""
+			else
+				if [ $debug = "true" ]; then
+					echo "Validating file $i" | Debug e c
+				fi
+				exec "rm -v \"/tmp/share/smb/${smbDest}/$i\""
+			fi
+		else
+			if [ $debug = "true" ]; then
+				echo "$i is not a file" | Debug e e
+			fi
+		fi
+	done
+}
+
+function main(){
+	prep
+	count=0
+	while [ "$ftpHost" == "" ] || [ "$ftpUser" == "" ] || [ "$ftpPass" == "" ]; do
+		((++count))
+		if (( $count > 3 )); then exit; fi
+		getFTP
+	done
+	count=0
+	while [ "$smbHost" == "" ] || [ "$smbShare" == "" ] || [ "$smbUser" == "" ] || [ "$smbPass" == "" ]; do
+		((++count))
+		if (( $count > 3 )); then exit; fi
+		getSMB
+	done
+	mountFTP
+	mountSMB
+	start
+	umountALL
+	cleanTMP
+}
+
+#==============================================================================
+# RUN OPTIONS & FUNCTIONS
+#==============================================================================
+
+format
+elements
+pkg jq
+pkg s-nail
+pkg zenity
+pkg yad
+pkg cifs-utils
+pkg curlftpfs
+import
+
+while getopts ":vercf:s:d:" opt; do
+	case "${opt}"
+		in
+			v) DEBUG=true;;
+			e) ERRORrpt=true;;
+			d) msgTo=$OPTARG;;
+			r) SENDrpt=true;;
+			c) clrformat;elements;;
+			f)
+				set -f
+				IFS=' '
+				ftp=($OPTARG)
+				if [ "${#ftp[@]}" = 4 ]; then
+					ftpHost=${ftp[0]}
+					ftpPort=${ftp[1]}
+					ftpUser=${ftp[2]}
+					ftpPass=${ftp[3]}
+				fi
+				;;
+			s)
+				set -f
+				IFS=' '
+				smb=($OPTARG)
+				if [ "${#smb[@]}" = 5 ]; then
+					smbHost=${smb[0]}
+					smbShare=${smb[1]}
+					smbDest=${smb[2]}
+					smbUser=${smb[3]}
+					smbPass=${smb[4]}
+				fi
+				;;
+			\? )
+				echo "Invalid option: $OPTARG" 1>&2
+        help
+        exit 0
+				;;
+			: )
+				echo "Invalid option: $OPTARG requires an argument" 1>&2
+        help
+        exit 0
+				;;
+	esac
+done
+shift $((OPTIND -1))
+
+#==============================================================================
+# RUN SCRIPT
+#==============================================================================
+
+main
+
+if [ "$DEBUG" = "true" ]; then
+    duration=$SECONDS
+    echo "#############################################################" | dbg i e
+    echo "log file.......: $logFile" | dbg i v
+    echo "$(($duration / 60)) minutes and $(($duration % 60)) seconds elapsed." | dbg i v
+    echo "#############################################################" | dbg i e
+fi
+
+if [ "$SENDrpt" = "true" ]; then
+    send "Transfer from ${ftpHost}" "Transfer from ${ftpHost} to ${smbHost} was completed. See attached report."
+fi
+
+if [ "$ERRORrpt" = "true" ]; then
+    cat $logFile | egrep "✗|!"
+fi
+
+exit 0
