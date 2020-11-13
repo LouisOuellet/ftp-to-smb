@@ -1,6 +1,27 @@
 # ftp-to-smb
 FTP to SMB file transfer script. Including email reporting. I wrote this script because I needed a way to transfer files from various ftp accounts to network shares on a Windows network. Since ADDC does not allow to map a ftp drive at logon, this was my next solution so I could deploy those files to many users centrally. My other solution was to go at each desk and setup the FTP on each machine locally.
 
+## Usage
+``` bash
+$ ./getfiles
+Unable to retrieve settings.json.
+File not found.
+
+Usage: ./getfiles [options]
+
+Options:
+
+-v                     => Enable Reporting Mode
+                          Input commands sent are stored in
+-e                     => Compile errors and warnings after execution
+-d                     => Set report destination email
+-r                     => Send report via email
+-c                     => Disable all formatting
+-f                     => Specify a FTP ex: "ftp.domain.com username password"
+-s                     => Specify a SMB ex: "0.0.0.0 shareName destinationDirectory username password"
+```
+If no FTP and/or SMB is provided, the script will request the information by GUI/CLI depending on your setup.
+
 ## Requirements (non-root user)
 For the script to work with a non-root user, you will need to add some parameters to your sudoers file.
 
