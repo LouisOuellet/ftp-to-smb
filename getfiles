@@ -16,21 +16,6 @@ SECOND=0
 # Script name
 scriptname=$(echo $0 | sed -e 's@.*/@@')
 
-# Script Personalisation
-Title=""
-help_options="
--v                     => Enable Reporting Mode
-                          Input commands sent are stored in ${logFile}
--e                     => Compile errors and warnings after execution
--d                     => Set report destination email
--r                     => Send report via email
--c                     => Disable all formatting
--f                     => Specify a FTP ex: \"ftp.domain.com username password\"
--s                     => Specify a SMB ex: \"0.0.0.0 shareName destinationDirectory username password\"
-"
-help_functions="
-"
-
 # Set Bash
 set -o pipefail
 
@@ -117,6 +102,20 @@ function elements(){
 #==============================================================================
 
 function help(){
+	# Script Personalisation
+	Title=""
+	help_options="
+	-v                     => Enable Reporting Mode
+	                          Input commands sent are stored in ${logFile}
+	-e                     => Compile errors and warnings after execution
+	-d                     => Set report destination email
+	-r                     => Send report via email
+	-c                     => Disable all formatting
+	-f                     => Specify a FTP ex: \"ftp.domain.com username password\"
+	-s                     => Specify a SMB ex: \"0.0.0.0 shareName destinationDirectory username password\"
+	"
+	help_functions="
+	"
   if [ "$DEBUG" = "true" ]; then
     echo "Help" | dbg i s
   fi
@@ -234,6 +233,8 @@ function send(){
 #==============================================================================
 
 function import(){
+	logDir=/tmp/
+	logFile="${logDir}$(date +%s%N).log"
 	if [ -f settings.json ]; then
 	  smtpHost=$(jq -r '.smtp.host' settings.json)
 	  smtpPort=$(jq -r '.smtp.port' settings.json)
@@ -251,8 +252,6 @@ function import(){
 		ftpPort=$(jq -r '.ftp.port' settings.json)
 		ftpUser=$(jq -r '.ftp.username' settings.json)
 		ftpPass=$(jq -r '.ftp.password' settings.json)
-	  logDir=$(jq -r '.logs.directory' settings.json)
-	  logFile="${logDir}$(date +%s%N).log"
 		if [ $smtpHost == null ]; then smtpHost=; fi
 		if [ $smtpPort == null ]; then smtpPort=; fi
 		if [ $smtpUser == null ]; then smtpUser=; fi
@@ -269,6 +268,8 @@ function import(){
 		if [ $ftpPort == null ]; then ftpPort=; fi
 		if [ $ftpUser == null ]; then ftpUser=; fi
 		if [ $ftpPass == null ]; then ftpPass=; fi
+	  logDir=$(jq -r '.logs.directory' settings.json)
+		logFile="${logDir}$(date +%s%N).log"
 	else
 		echo "Unable to retrieve settings.json."
 		echo "File not found."
@@ -446,12 +447,12 @@ function main(){
 format
 elements
 pkg jq
+import
 pkg s-nail
 pkg zenity
 pkg yad
 pkg cifs-utils
 pkg curlftpfs
-import
 
 while getopts ":vercf:s:d:" opt; do
 	case "${opt}"
