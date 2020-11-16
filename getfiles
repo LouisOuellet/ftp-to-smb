@@ -206,7 +206,7 @@ function exec(){
       eval $1
     fi
   else
-    error "Missing Argument(s)"
+    error "No command to execute"
   fi
 }
 
@@ -248,6 +248,7 @@ function import(){
 	  smbDest=$(jq -r '.smb.destination' settings.json)
 		smbUser=$(jq -r '.smb.username' settings.json)
 		smbPass=$(jq -r '.smb.password' settings.json)
+		smbVers=$(jq -r '.smb.version' settings.json)
 	  ftpHost=$(jq -r '.ftp.host' settings.json)
 		ftpPort=$(jq -r '.ftp.port' settings.json)
 		ftpUser=$(jq -r '.ftp.username' settings.json)
@@ -264,6 +265,7 @@ function import(){
 		if [ $smbDest == null ]; then smbDest=; fi
 		if [ $smbUser == null ]; then smbUser=; fi
 		if [ $smbPass == null ]; then smbPass=; fi
+		if [ $smbVers == null ]; then smbVers=; fi
 		if [ $ftpHost == null ]; then ftpHost=; fi
 		if [ $ftpPort == null ]; then ftpPort=; fi
 		if [ $ftpUser == null ]; then ftpUser=; fi
@@ -353,6 +355,9 @@ function getSMB(){
 function mountFTP(){
 	if mount | grep /tmp/share/ftp > /dev/null;then
 		exec "sudo umount -lf /tmp/share/ftp"
+	else
+		exec "rm -vr /tmp/share/ftp"
+		exec "mkdir -p /tmp/share/ftp"
 	fi
 	exec "sudo curlftpfs ${ftpUser}:${ftpPass}@${ftpHost}:${ftpPort} /tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
 }
@@ -360,8 +365,16 @@ function mountFTP(){
 function mountSMB(){
 	if mount | grep /tmp/share/smb > /dev/null;then
 		exec "sudo umount -lf /tmp/share/smb"
+	else
+		exec "rm -vr /tmp/share/smb"
+		exec "mkdir -p /tmp/share/smb"
 	fi
-	exec "sudo mount -t cifs -o rw,uid=$(id -u $USER),gid=$(id -g $USER),username=${smbUser},password=${smbPass} //${smbHost}/${smbShare} /tmp/share/smb"
+	if [ "${smbVers}" != "" ]; then
+		version=",vers=${smbVers}"
+	else
+		version=
+	fi
+	exec "sudo mount -t cifs -o rw,uid=$(id -u $USER),gid=$(id -g $USER),username=${smbUser},password=${smbPass}${version} //${smbHost}/${smbShare} /tmp/share/smb"
 }
 
 function umountALL(){
@@ -379,42 +392,56 @@ function cleanTMP(){
 
 function start(){
 	exec "rsync -av --progress --exclude logs/ --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
-	exec "cd /tmp/share/ftp/"
 	exec "mkdir -p /tmp/share/ftp/archives/"
-	for i in *; do
-		if [ $debug = "true" ]; then
-			echo "Processing file $i" | Debug i s
-		fi
-		if [[ -d $i ]]; then
-			if [ $debug = "true" ]; then
-				echo "$i is a directory" | Debug i c
-			fi
-		elif [[ -f $i ]]; then
-			if [ $debug = "true" ]; then
-				echo "$i is a file" | Debug i c
-			fi
-			FTP_CheckSUM=($(md5sum "/tmp/share/ftp/$i"))
-			SMB_CheckSUM=($(md5sum "/tmp/share/smb/${smbDest}/$i"))
-			if [ $debug = "true" ]; then
-				echo "Validating file $i" | Debug i c
-			fi
-			if [ "$FTP_CheckSUM" = "$SMB_CheckSUM" ]; then
-				if [ $debug = "true" ]; then
-					echo "Validating file $i" | Debug s c
-				fi
-				exec "cp -v \"/tmp/share/ftp/$i\" \"/tmp/share/ftp/archives/$i\""
-				exec "rm -v \"/tmp/share/ftp/$i\""
-				exec "mv -v \"/tmp/share/smb/${smbDest}/$i\" \"/tmp/share/smb/${smbDest}/validated/$i\""
-			else
-				if [ $debug = "true" ]; then
-					echo "Validating file $i" | Debug e c
-				fi
-				exec "rm -v \"/tmp/share/smb/${smbDest}/$i\""
+	mountStatus='not ready'
+	while [ "$mountStatus" == "not ready" ]; do
+		if mount | grep /tmp/share/ftp > /dev/null;then
+			echo "/tmp/share/ftp is mounted" | dbg i s
+			echo "waiting for /tmp/share/smb" | dbg i s
+			if mount | grep /tmp/share/smb > /dev/null;then
+				echo "/tmp/share/smb is mounted" | dbg i s
+				mountStatus='ready'
+				cd "/tmp/share/ftp"
+				for i in *; do
+					echo "Processing file $i" | dbg i s
+					# if [ "$debug" = "true" ]; then
+					# 	echo "Processing file $i" | dbg i s
+					# fi
+					# if [[ -d "/tmp/share/ftp/$i" ]]; then
+					# 	if [ "$debug" = "true" ]; then
+					# 		echo "$i is a directory" | dbg i c
+					# 	fi
+					# elif [[ -f "/tmp/share/ftp/$i" ]]; then
+					# 	if [ "$debug" = "true" ]; then
+					# 		echo "$i is a file" | dbg i c
+					# 	fi
+					# 	FTP_CheckSUM=($(md5sum "/tmp/share/ftp/$i"))
+					# 	SMB_CheckSUM=($(md5sum "/tmp/share/smb/${smbDest}/$i"))
+					# 	if [ "$debug" = "true" ]; then
+					# 		echo "Validating file $i" | dbg i c
+					# 	fi
+					# 	if [ "$FTP_CheckSUM" = "$SMB_CheckSUM" ]; then
+					# 		if [ "$debug" = "true" ]; then
+					# 			echo "Validating file $i" | dbg s c
+					# 		fi
+					# 		# exec "cp -v \"/tmp/share/ftp/$i\" \"/tmp/share/ftp/archives/$i\""
+					# 		# exec "rm -v \"/tmp/share/ftp/$i\""
+					# 		# exec "mv -v \"/tmp/share/smb/${smbDest}/$i\" \"/tmp/share/smb/${smbDest}/validated/$i\""
+					# 	else
+					# 		if [ "$debug" = "true" ]; then
+					# 			echo "Validating file $i" | dbg e c
+					# 		fi
+					# 		# exec "rm -v \"/tmp/share/smb/${smbDest}/$i\""
+					# 	fi
+					# else
+					# 	if [ "$debug" = "true" ]; then
+					# 		echo "$i is not a file" | dbg e e
+					# 	fi
+					# fi
+				done
 			fi
 		else
-			if [ $debug = "true" ]; then
-				echo "$i is not a file" | Debug e e
-			fi
+			echo "waiting for /tmp/share/ftp" | dbg i s
 		fi
 	done
 }
