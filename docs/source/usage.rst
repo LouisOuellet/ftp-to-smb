@@ -12,6 +12,8 @@ If no FTP and/or SMB is provided, the script will request the information by GUI
 
    Options:
 
+	 -a                     => Enable Archive Mode
+	                           This mode moves the transferred file in an archive folder instead of deleting it
    -v                     => Enable Reporting Mode
                              Input commands sent are stored in
    -e                     => Compile errors and warnings after execution
