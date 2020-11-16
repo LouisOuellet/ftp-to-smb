@@ -426,7 +426,6 @@ function start(){
 	while [ "$mountStatus" == "not ready" ]; do
 		if mount | grep /tmp/share/ftp > /dev/null;then
 			echo "/tmp/share/ftp is mounted" | dbg i s
-			echo "waiting for /tmp/share/smb" | dbg i s
 			if mount | grep /tmp/share/smb > /dev/null;then
 				echo "/tmp/share/smb is mounted" | dbg i s
 				mountStatus='ready'
@@ -473,6 +472,8 @@ function start(){
 						fi
 					fi
 				done
+			else
+				echo "waiting for /tmp/share/smb" | dbg i s
 			fi
 		else
 			echo "waiting for /tmp/share/ftp" | dbg i s
