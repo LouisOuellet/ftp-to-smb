@@ -185,10 +185,14 @@ function dbg(){
       if [ "$3" != "" ]; then
         LogFile=$3
       fi
+			DCMDout=$DCMD
+			for string in ${protect[@]};do
+				DCMDout=$(echo $DCMDout | sed -e "s/$string/xxx/g")
+			done
       if [ "$DEBUG" = "true" ]; then
-        printf "${TYPE}$(PDATE)${ACTION} ${DCMD}\n" | tee -a $logFile
+        printf "${TYPE}$(PDATE)${ACTION} ${DCMDout}\n" | tee -a $logFile
       else
-        printf "${TYPE}$(PDATE)${ACTION} ${DCMD}\n"
+        printf "${TYPE}$(PDATE)${ACTION} ${DCMDout}\n"
       fi
     done
   else
@@ -290,6 +294,24 @@ function import(){
 function prep(){
 	exec "mkdir -p /tmp/share/ftp"
 	exec "mkdir -p /tmp/share/smb"
+}
+
+function protectDCMD(){
+	protect=(
+		$smtpHost
+		$smtpPort
+		$smtpUser
+		$smtpPass
+		$smbHost
+		$(echo ${smbShare} | sed -e 's/\//\\\//g')
+		$(echo ${smbDest} | sed -e 's/\//\\\//g')
+		$smbUser
+		$smbPass
+		$ftpHost
+		$ftpPort
+		$ftpUser
+		$ftpPass
+	)
 }
 
 function getFTP(){
@@ -406,7 +428,7 @@ function start(){
 				echo "/tmp/share/smb is mounted" | dbg i s
 				mountStatus='ready'
 				cd "/tmp/share/ftp"
-				ls -al
+				# ls -al
 				for file in *; do
 					if [ "$DEBUG" = "true" ]; then
 						echo "Processing file ${file}" | dbg i e
@@ -462,6 +484,8 @@ function main(){
 		if (( $count > 3 )); then exit; fi
 		getSMB
 	done
+	protectDCMD
+	echo $protect
 	mountFTP
 	mountSMB
 	start
