@@ -15,7 +15,7 @@ Usage: ./getfiles [options]
 Options:
 
 -a                     => Enable Archive Mode
-													This mode moves the transferred file in an archive folder instead of deleting it
+                          This mode moves the transferred file in an archive folder instead of deleting it
 -v                     => Enable Reporting Mode
                           Input commands sent are stored in
 -e                     => Compile errors and warnings after execution
