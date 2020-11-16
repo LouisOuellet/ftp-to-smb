@@ -64,13 +64,13 @@ Additionnally you can set the default ftp and smb settings
 
 ``` json
 {
-		"ftp":{
+    "ftp":{
         "host": "fqdn.domain.com",
         "port": "465",
         "username": "username",
         "password": "Password123"
     },
-		"smb":{
+    "smb":{
         "host": "fqdn.domain.com",
         "share": "share1",
         "destination": "/subdirectory/",
@@ -90,11 +90,11 @@ To run as a cron, you have multiple options. If you only have one transfer to pr
 
 # Verify if the file-system is currently in READ-ONLY state
 FILE=/tmp/test.txt;touch ${FILE};if [ -f ${FILE} ]; then
-	cd /home/${USER}/bin/getfiles # Location of getfiles
-	bash getfiles -vcrd destination@domain.com -f "host1.domain.com 21 username password" -s "host share1 destination username password"
-	bash getfiles -a -f "host2.domain.com 21 username password" -s "host share2 destination username password"
+  cd /home/${USER}/bin/getfiles # Location of getfiles
+  bash getfiles -vcrd destination@domain.com -f "host1.domain.com 21 username password" -s "host share1 destination username password"
+  bash getfiles -a -f "host2.domain.com 21 username password" -s "host share2 destination username password"
 else
-	# Reboot the host if the file-system is READ-ONLY
+  # Reboot the host if the file-system is READ-ONLY
   sudo reboot
 fi
 ```
