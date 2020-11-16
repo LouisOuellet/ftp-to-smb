@@ -19,6 +19,9 @@ scriptname=$(echo $0 | sed -e 's@.*/@@')
 # Set Bash
 set -o pipefail
 
+# Save Current IFS
+tmpIFS=${IFS}
+
 # SETS LOCALE
 # Updated to en_US to support
 #export LC_ALL=en_US.UTF-8 > /dev/null 2>&1 || export LC_ALL=en_GB.UTF-8 > /dev/null 2>&1 || export LC_ALL=C.UTF-8 > /dev/null 2>&1
@@ -391,7 +394,8 @@ function cleanTMP(){
 }
 
 function start(){
-	exec "rsync -av --progress --exclude logs/ --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
+	IFS=${tmpIFS}
+	exec "rsync -av --progress --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
 	exec "mkdir -p /tmp/share/ftp/archives/"
 	mountStatus='not ready'
 	while [ "$mountStatus" == "not ready" ]; do
@@ -402,42 +406,40 @@ function start(){
 				echo "/tmp/share/smb is mounted" | dbg i s
 				mountStatus='ready'
 				cd "/tmp/share/ftp"
-				for i in *; do
-					echo "Processing file $i" | dbg i s
-					# if [ "$debug" = "true" ]; then
-					# 	echo "Processing file $i" | dbg i s
-					# fi
-					# if [[ -d "/tmp/share/ftp/$i" ]]; then
-					# 	if [ "$debug" = "true" ]; then
-					# 		echo "$i is a directory" | dbg i c
-					# 	fi
-					# elif [[ -f "/tmp/share/ftp/$i" ]]; then
-					# 	if [ "$debug" = "true" ]; then
-					# 		echo "$i is a file" | dbg i c
-					# 	fi
-					# 	FTP_CheckSUM=($(md5sum "/tmp/share/ftp/$i"))
-					# 	SMB_CheckSUM=($(md5sum "/tmp/share/smb/${smbDest}/$i"))
-					# 	if [ "$debug" = "true" ]; then
-					# 		echo "Validating file $i" | dbg i c
-					# 	fi
-					# 	if [ "$FTP_CheckSUM" = "$SMB_CheckSUM" ]; then
-					# 		if [ "$debug" = "true" ]; then
-					# 			echo "Validating file $i" | dbg s c
-					# 		fi
-					# 		# exec "cp -v \"/tmp/share/ftp/$i\" \"/tmp/share/ftp/archives/$i\""
-					# 		# exec "rm -v \"/tmp/share/ftp/$i\""
-					# 		# exec "mv -v \"/tmp/share/smb/${smbDest}/$i\" \"/tmp/share/smb/${smbDest}/validated/$i\""
-					# 	else
-					# 		if [ "$debug" = "true" ]; then
-					# 			echo "Validating file $i" | dbg e c
-					# 		fi
-					# 		# exec "rm -v \"/tmp/share/smb/${smbDest}/$i\""
-					# 	fi
-					# else
-					# 	if [ "$debug" = "true" ]; then
-					# 		echo "$i is not a file" | dbg e e
-					# 	fi
-					# fi
+				ls -al
+				for file in *; do
+					if [ "$DEBUG" = "true" ]; then
+						echo "Processing file ${file}" | dbg i e
+					fi
+					if [[ -d "/tmp/share/ftp/${file}" ]]; then
+						if [ "$DEBUG" = "true" ]; then
+							echo "${file} is a directory" | dbg i e
+						fi
+					elif [[ -f "/tmp/share/ftp/${file}" ]]; then
+						if [ "$DEBUG" = "true" ]; then
+							echo "${file} is a file" | dbg i e
+						fi
+						if [ "$DEBUG" = "true" ]; then
+							echo "Validating file ${file}" | dbg i c
+						fi
+						if [ "($(md5sum "/tmp/share/ftp/${file}"))" = "($(md5sum "/tmp/share/smb/${smbDest}/${file}"))" ]; then
+							if [ "$DEBUG" = "true" ]; then
+								echo "Validating file ${file}" | dbg s c
+							fi
+							# exec "cp -v \"/tmp/share/ftp/${file}\" \"/tmp/share/ftp/archives/${file}\""
+							# exec "rm -v \"/tmp/share/ftp/${file}\""
+							# exec "mv -v \"/tmp/share/smb/${smbDest}/${file}\" \"/tmp/share/smb/${smbDest}/validated/${file}\""
+						else
+							if [ "$DEBUG" = "true" ]; then
+								echo "Validating file ${file}" | dbg e c
+							fi
+							# exec "rm -v \"/tmp/share/smb/${smbDest}/${file}\""
+						fi
+					else
+						if [ "$DEBUG" = "true" ]; then
+							echo "${file} is not a file" | dbg e e
+						fi
+					fi
 				done
 			fi
 		else
@@ -499,6 +501,7 @@ while getopts ":vercf:s:d:" opt; do
 					ftpUser=${ftp[2]}
 					ftpPass=${ftp[3]}
 				fi
+				IFS=${tmpIFS}
 				;;
 			s)
 				set -f
@@ -511,6 +514,7 @@ while getopts ":vercf:s:d:" opt; do
 					smbUser=${smb[3]}
 					smbPass=${smb[4]}
 				fi
+				IFS=${tmpIFS}
 				;;
 			\? )
 				echo "Invalid option: $OPTARG" 1>&2
