@@ -423,8 +423,7 @@ function start(){
 				echo "/tmp/share/smb is mounted" | dbg i s
 				mountStatus='ready'
 				cd "/tmp/share/ftp"
-				ls -al
-				for file in *; do
+				for file in $(ls); do
 					if [ "$DEBUG" = "true" ]; then
 						echo "Processing file ${file}" | dbg i e
 					fi
@@ -439,18 +438,24 @@ function start(){
 						if [ "$DEBUG" = "true" ]; then
 							echo "Validating file ${file}" | dbg i c
 						fi
-						if [ "($(md5sum "/tmp/share/ftp/${file}"))" = "($(md5sum "/tmp/share/smb/${smbDest}/${file}"))" ]; then
+						SUMftp=($(md5sum "/tmp/share/ftp/${file}"))
+						SUMsmb=($(md5sum "/tmp/share/smb/${smbDest}/${file}"))
+						if [ "$DEBUG" = "true" ]; then
+							echo "/tmp/share/ftp/${file} : ${SUMftp}" | dbg i v
+							echo "/tmp/share/smb/${smbDest}/${file} : ${SUMsmb}" | dbg i v
+						fi
+						if [ "$SUMftp" = "$SUMsmb" ]; then
 							if [ "$DEBUG" = "true" ]; then
 								echo "Validating file ${file}" | dbg s c
 							fi
-							# exec "cp -v \"/tmp/share/ftp/${file}\" \"/tmp/share/ftp/archives/${file}\""
-							# exec "rm -v \"/tmp/share/ftp/${file}\""
-							# exec "mv -v \"/tmp/share/smb/${smbDest}/${file}\" \"/tmp/share/smb/${smbDest}/validated/${file}\""
+							exec "cp -v \"/tmp/share/ftp/${file}\" \"/tmp/share/ftp/archives/${file}\""
+							exec "rm -v \"/tmp/share/ftp/${file}\""
+							exec "mv -v \"/tmp/share/smb/${smbDest}/${file}\" \"/tmp/share/smb/${smbDest}/validated/${file}\""
 						else
 							if [ "$DEBUG" = "true" ]; then
 								echo "Validating file ${file}" | dbg e c
 							fi
-							# exec "rm -v \"/tmp/share/smb/${smbDest}/${file}\""
+							exec "rm -v \"/tmp/share/smb/${smbDest}/${file}\""
 						fi
 					else
 						if [ "$DEBUG" = "true" ]; then
