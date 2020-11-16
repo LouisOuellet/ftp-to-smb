@@ -108,6 +108,8 @@ function help(){
 	# Script Personalisation
 	Title=""
 	help_options="
+	-a                     => Enable Archive Mode
+	                          This mode mv the transfered file in an archive folder instead of deleting it
 	-v                     => Enable Reporting Mode
 	                          Input commands sent are stored in ${logFile}
 	-e                     => Compile errors and warnings after execution
@@ -412,8 +414,14 @@ function cleanTMP(){
 
 function start(){
 	IFS=${tmpIFS}
-	exec "rsync -av --progress --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
-	exec "mkdir -p /tmp/share/ftp/archives/"
+	if [ "$ARCHIVE" = "true" ]; then
+		exec "rsync -av --progress --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
+	else
+		exec "rsync -av --progress /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
+	fi
+	if [ "$ARCHIVE" = "true" ]; then
+		exec "mkdir -p /tmp/share/ftp/archives/"
+	fi
 	mountStatus='not ready'
 	while [ "$mountStatus" == "not ready" ]; do
 		if mount | grep /tmp/share/ftp > /dev/null;then
@@ -448,7 +456,9 @@ function start(){
 							if [ "$DEBUG" = "true" ]; then
 								echo "Validating file ${file}" | dbg s c
 							fi
-							exec "cp -v \"/tmp/share/ftp/${file}\" \"/tmp/share/ftp/archives/${file}\""
+							if [ "$ARCHIVE" = "true" ]; then
+								exec "cp -v \"/tmp/share/ftp/${file}\" \"/tmp/share/ftp/archives/${file}\""
+							fi
 							exec "rm -v \"/tmp/share/ftp/${file}\""
 							exec "mv -v \"/tmp/share/smb/${smbDest}/${file}\" \"/tmp/share/smb/${smbDest}/validated/${file}\""
 						else
@@ -505,13 +515,14 @@ pkg yad
 pkg cifs-utils
 pkg curlftpfs
 
-while getopts ":vercf:s:d:" opt; do
+while getopts ":vearcf:s:d:" opt; do
 	case "${opt}"
 		in
 			v) DEBUG=true;;
 			e) ERRORrpt=true;;
 			d) msgTo=$OPTARG;;
 			r) SENDrpt=true;;
+			a) ARCHIVE=true;;
 			c) clrformat;elements;;
 			f)
 				set -f
@@ -570,8 +581,8 @@ if [ "$SENDrpt" = "true" ]; then
     send "Transfer from ${ftpHost}" "Transfer from ${ftpHost} to ${smbHost} was completed. See attached report."
 fi
 
-if [ "$ERRORrpt" = "true" ]; then
-    cat $logFile | egrep "✗|!"
+if [ "$ERRORrpt" = 'true' ]; then
+    cat $logFile | egrep '✗|!'
 fi
 
 exit 0
