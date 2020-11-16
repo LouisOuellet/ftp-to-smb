@@ -291,11 +291,6 @@ function import(){
 # FUNTIONS
 #==============================================================================
 
-function prep(){
-	exec "mkdir -p /tmp/share/ftp"
-	exec "mkdir -p /tmp/share/smb"
-}
-
 function protectDCMD(){
 	protect=(
 		$smtpHost
@@ -428,7 +423,7 @@ function start(){
 				echo "/tmp/share/smb is mounted" | dbg i s
 				mountStatus='ready'
 				cd "/tmp/share/ftp"
-				# ls -al
+				ls -al
 				for file in *; do
 					if [ "$DEBUG" = "true" ]; then
 						echo "Processing file ${file}" | dbg i e
@@ -471,7 +466,6 @@ function start(){
 }
 
 function main(){
-	prep
 	count=0
 	while [ "$ftpHost" == "" ] || [ "$ftpUser" == "" ] || [ "$ftpPass" == "" ]; do
 		((++count))
@@ -485,7 +479,6 @@ function main(){
 		getSMB
 	done
 	protectDCMD
-	echo $protect
 	mountFTP
 	mountSMB
 	start
