@@ -75,7 +75,8 @@ Additionnally you can set the default ftp and smb settings
         "share": "share1",
         "destination": "/subdirectory/",
         "username": "username",
-        "password": "Password123"
+        "password": "Password123",
+        "version": "1.0"
     }
 }
 ```
