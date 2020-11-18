@@ -241,6 +241,24 @@ function send(){
 # SETTINGS
 #==============================================================================
 
+function protectDCMD(){
+	protect=(
+		$smtpHost
+		$smtpPort
+		$smtpUser
+		$smtpPass
+		$smbHost
+		$(echo ${smbShare} | sed -e 's/\//\\\//g')
+		$(echo ${smbDest} | sed -e 's/\//\\\//g')
+		$smbUser
+		$smbPass
+		$ftpHost
+		$ftpPort
+		$ftpUser
+		$ftpPass
+	)
+}
+
 function import(){
 	logDir=/tmp/
 	logFile="${logDir}$(date +%s%N).log"
@@ -292,24 +310,6 @@ function import(){
 #==============================================================================
 # FUNTIONS
 #==============================================================================
-
-function protectDCMD(){
-	protect=(
-		$smtpHost
-		$smtpPort
-		$smtpUser
-		$smtpPass
-		$smbHost
-		$(echo ${smbShare} | sed -e 's/\//\\\//g')
-		$(echo ${smbDest} | sed -e 's/\//\\\//g')
-		$smbUser
-		$smbPass
-		$ftpHost
-		$ftpPort
-		$ftpUser
-		$ftpPass
-	)
-}
 
 function getFTP(){
 	if [ "$DISPLAY" != "" ]; then
