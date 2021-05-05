@@ -204,18 +204,14 @@ function dbg(){
 
 function exec(){
   if [ "$1" != "" ]; then
-    if [ "$DEBUG" = "true" ]; then
-      echo "exec $1" | dbg i s
-      if eval $1 2>&1 | dbg o o;then
-        echo "$1" | dbg s r
-      else
-        echo "$1" | dbg e r
-      fi
+    echo "exec $1" | dbg i s
+    if eval $1 2>&1 | dbg o o;then
+      echo "$1" | dbg s r
     else
-      eval $1
+      echo "$1" | dbg e r
     fi
   else
-    error "No command to execute"
+    error "Missing Argument(s)"
   fi
 }
 
@@ -381,7 +377,7 @@ function mountFTP(){
 		exec "rm -vr /tmp/share/ftp"
 		exec "mkdir -p /tmp/share/ftp"
 	fi
-	exec "sudo curlftpfs ${ftpUser}:${ftpPass}@${ftpHost}:${ftpPort} /tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
+	exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ${ftpHost}:${ftpPort} /tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
 }
 
 function mountSMB(){
