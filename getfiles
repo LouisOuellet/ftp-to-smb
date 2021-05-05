@@ -424,6 +424,7 @@ function start(){
 			echo "/tmp/share/ftp is mounted" | dbg i s
 			if mount | grep /tmp/share/smb > /dev/null;then
 				echo "/tmp/share/smb is mounted" | dbg i s
+				exec "mkdir -p \"/tmp/share/smb/${smbDest}/validated/\""
 				mountStatus='ready'
 				cd "/tmp/share/ftp"
 				for file in $(ls); do
