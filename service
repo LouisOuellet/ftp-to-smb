@@ -1,0 +1,12 @@
+#!/bin/bash
+
+sourceDir=$(dirname $(readlink -f $0))
+
+while(true);do
+  /bin/bash ${sourceDir}/getfiles
+  if [ -f "${sourceDir}/tmp" ]; then
+    rm -r ${sourceDir}/tmp
+  fi
+done
+
+exit 0

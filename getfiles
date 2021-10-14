@@ -23,8 +23,16 @@ set -o pipefail
 tmpIFS=${IFS}
 
 # SETS LOCALE
-# Updated to en_US to support
-#export LC_ALL=en_US.UTF-8 > /dev/null 2>&1 || export LC_ALL=en_GB.UTF-8 > /dev/null 2>&1 || export LC_ALL=C.UTF-8 > /dev/null 2>&1
+export LC_ALL=en_US.UTF-8 > /dev/null 2>&1
+
+# Save Current Working Directory
+currentPWD=$(pwd)
+
+# Source Directory
+sourceDir=$(dirname $(readlink -f $0))
+
+# Set PATH
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
 
 #==============================================================================
 # FORMATTING
@@ -258,24 +266,24 @@ function protectDCMD(){
 function import(){
 	logDir=/tmp/
 	logFile="${logDir}$(date +%s%N).log"
-	if [ -f settings.json ]; then
-	  smtpHost=$(jq -r '.smtp.host' settings.json)
-	  smtpPort=$(jq -r '.smtp.port' settings.json)
-		smtpUser=$(jq -r '.smtp.username' settings.json)
-		smtpPass=$(jq -r '.smtp.password' settings.json)
-		msgName=$(jq -r '.send.name' settings.json)
-		msgFrom=$(jq -r '.send.from' settings.json)
-	  msgTo=$(jq -r '.send.to' settings.json)
-		smbHost=$(jq -r '.smb.host' settings.json)
-		smbShare=$(jq -r '.smb.share' settings.json)
-	  smbDest=$(jq -r '.smb.destination' settings.json)
-		smbUser=$(jq -r '.smb.username' settings.json)
-		smbPass=$(jq -r '.smb.password' settings.json)
-		smbVers=$(jq -r '.smb.version' settings.json)
-	  ftpHost=$(jq -r '.ftp.host' settings.json)
-		ftpPort=$(jq -r '.ftp.port' settings.json)
-		ftpUser=$(jq -r '.ftp.username' settings.json)
-		ftpPass=$(jq -r '.ftp.password' settings.json)
+	if [ -f ${sourceDir}/settings.json ]; then
+	  smtpHost=$(jq -r '.smtp.host' ${sourceDir}/settings.json)
+	  smtpPort=$(jq -r '.smtp.port' ${sourceDir}/settings.json)
+		smtpUser=$(jq -r '.smtp.username' ${sourceDir}/settings.json)
+		smtpPass=$(jq -r '.smtp.password' ${sourceDir}/settings.json)
+		msgName=$(jq -r '.send.name' ${sourceDir}/settings.json)
+		msgFrom=$(jq -r '.send.from' ${sourceDir}/settings.json)
+	  msgTo=$(jq -r '.send.to' ${sourceDir}/settings.json)
+		smbHost=$(jq -r '.smb.host' ${sourceDir}/settings.json)
+		smbShare=$(jq -r '.smb.share' ${sourceDir}/settings.json)
+	  smbDest=$(jq -r '.smb.destination' ${sourceDir}/settings.json)
+		smbUser=$(jq -r '.smb.username' ${sourceDir}/settings.json)
+		smbPass=$(jq -r '.smb.password' ${sourceDir}/settings.json)
+		smbVers=$(jq -r '.smb.version' ${sourceDir}/settings.json)
+	  ftpHost=$(jq -r '.ftp.host' ${sourceDir}/settings.json)
+		ftpPort=$(jq -r '.ftp.port' ${sourceDir}/settings.json)
+		ftpUser=$(jq -r '.ftp.username' ${sourceDir}/settings.json)
+		ftpPass=$(jq -r '.ftp.password' ${sourceDir}/settings.json)
 		if [ $smtpHost == null ]; then smtpHost=; fi
 		if [ $smtpPort == null ]; then smtpPort=; fi
 		if [ $smtpUser == null ]; then smtpUser=; fi
@@ -293,10 +301,10 @@ function import(){
 		if [ $ftpPort == null ]; then ftpPort=; fi
 		if [ $ftpUser == null ]; then ftpUser=; fi
 		if [ $ftpPass == null ]; then ftpPass=; fi
-	  logDir=$(jq -r '.logs.directory' settings.json)
+	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
 		logFile="${logDir}$(date +%s%N).log"
 	else
-		echo "Unable to retrieve settings.json."
+		echo "Unable to retrieve ${sourceDir}/settings.json."
 		echo "File not found."
 		help
 		exit 0
@@ -371,36 +379,36 @@ function getSMB(){
 }
 
 function mountFTP(){
-	if mount | grep /tmp/share/ftp > /dev/null;then
-		exec "sudo umount -lf /tmp/share/ftp"
+	if mount | grep ${sourceDir}/tmp/share/ftp > /dev/null;then
+		exec "sudo umount -lf ${sourceDir}/tmp/share/ftp"
 	else
-		exec "rm -vr /tmp/share/ftp"
-		exec "mkdir -p /tmp/share/ftp"
+		exec "rm -vr ${sourceDir}/tmp/share/ftp"
+		exec "mkdir -p ${sourceDir}/tmp/share/ftp"
 	fi
-	exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ${ftpHost}:${ftpPort} /tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
+	exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
 }
 
 function mountSMB(){
-	if mount | grep /tmp/share/smb > /dev/null;then
-		exec "sudo umount -lf /tmp/share/smb"
+	if mount | grep ${sourceDir}/tmp/share/smb > /dev/null;then
+		exec "sudo umount -lf ${sourceDir}/tmp/share/smb"
 	else
-		exec "rm -vr /tmp/share/smb"
-		exec "mkdir -p /tmp/share/smb"
+		exec "rm -vr ${sourceDir}/tmp/share/smb"
+		exec "mkdir -p ${sourceDir}/tmp/share/smb"
 	fi
 	if [ "${smbVers}" != "" ]; then
 		version=",vers=${smbVers}"
 	else
 		version=
 	fi
-	exec "sudo mount -t cifs -o rw,uid=$(id -u $USER),gid=$(id -g $USER),username=${smbUser},password=${smbPass}${version} //${smbHost}/${smbShare} /tmp/share/smb"
+	exec "sudo mount -t cifs -o rw,uid=$(id -u $USER),gid=$(id -g $USER),username=${smbUser},password=${smbPass}${version} //${smbHost}/${smbShare} ${sourceDir}/tmp/share/smb"
 }
 
 function umountALL(){
-	if mount | grep /tmp/share/ftp > /dev/null;then
-		exec "sudo umount -lf /tmp/share/ftp"
+	if mount | grep ${sourceDir}/tmp/share/ftp > /dev/null;then
+		exec "sudo umount -lf ${sourceDir}/tmp/share/ftp"
 	fi
-	if mount | grep /tmp/share/smb > /dev/null;then
-		exec "sudo umount -lf /tmp/share/smb"
+	if mount | grep ${sourceDir}/tmp/share/smb > /dev/null;then
+		exec "sudo umount -lf ${sourceDir}/tmp/share/smb"
 	fi
 }
 
@@ -411,57 +419,57 @@ function cleanTMP(){
 function start(){
 	IFS=${tmpIFS}
 	if [ "$ARCHIVE" = "true" ]; then
-		exec "rsync -av --progress --exclude archives/ /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
+		exec "rsync -av --progress --exclude archives/ ${sourceDir}/tmp/share/ftp/ \"${sourceDir}/tmp/share/smb/${smbDest}\""
 	else
-		exec "rsync -av --progress /tmp/share/ftp/ \"/tmp/share/smb/${smbDest}\""
+		exec "rsync -av --progress ${sourceDir}/tmp/share/ftp/ \"${sourceDir}/tmp/share/smb/${smbDest}\""
 	fi
 	if [ "$ARCHIVE" = "true" ]; then
-		exec "mkdir -p /tmp/share/ftp/archives/"
+		exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives/"
 	fi
 	mountStatus='not ready'
 	while [ "$mountStatus" == "not ready" ]; do
-		if mount | grep /tmp/share/ftp > /dev/null;then
-			echo "/tmp/share/ftp is mounted" | dbg i s
-			if mount | grep /tmp/share/smb > /dev/null;then
-				echo "/tmp/share/smb is mounted" | dbg i s
-				exec "mkdir -p \"/tmp/share/smb/${smbDest}/validated/\""
+		if mount | grep ${sourceDir}/tmp/share/ftp > /dev/null;then
+			echo "${sourceDir}/tmp/share/ftp is mounted" | dbg i s
+			if mount | grep ${sourceDir}/tmp/share/smb > /dev/null;then
+				echo "${sourceDir}/tmp/share/smb is mounted" | dbg i s
+				exec "mkdir -p \"${sourceDir}/tmp/share/smb/${smbDest}/validated/\""
 				mountStatus='ready'
-				cd "/tmp/share/ftp"
+				cd "${sourceDir}/tmp/share/ftp"
 				for file in $(ls); do
 					if [ "$DEBUG" = "true" ]; then
 						echo "Processing file ${file}" | dbg i e
 					fi
-					if [[ -d "/tmp/share/ftp/${file}" ]]; then
+					if [[ -d "${sourceDir}/tmp/share/ftp/${file}" ]]; then
 						if [ "$DEBUG" = "true" ]; then
 							echo "${file} is a directory" | dbg i e
 						fi
-					elif [[ -f "/tmp/share/ftp/${file}" ]]; then
+					elif [[ -f "${sourceDir}/tmp/share/ftp/${file}" ]]; then
 						if [ "$DEBUG" = "true" ]; then
 							echo "${file} is a file" | dbg i e
 						fi
 						if [ "$DEBUG" = "true" ]; then
 							echo "Validating file ${file}" | dbg i c
 						fi
-						SUMftp=($(md5sum "/tmp/share/ftp/${file}"))
-						SUMsmb=($(md5sum "/tmp/share/smb/${smbDest}/${file}"))
+						SUMftp=($(md5sum "${sourceDir}/tmp/share/ftp/${file}"))
+						SUMsmb=($(md5sum "${sourceDir}/tmp/share/smb/${smbDest}/${file}"))
 						if [ "$DEBUG" = "true" ]; then
-							echo "/tmp/share/ftp/${file} : ${SUMftp}" | dbg i v
-							echo "/tmp/share/smb/${smbDest}/${file} : ${SUMsmb}" | dbg i v
+							echo "${sourceDir}/tmp/share/ftp/${file} : ${SUMftp}" | dbg i v
+							echo "${sourceDir}/tmp/share/smb/${smbDest}/${file} : ${SUMsmb}" | dbg i v
 						fi
 						if [ "$SUMftp" = "$SUMsmb" ]; then
 							if [ "$DEBUG" = "true" ]; then
 								echo "Validating file ${file}" | dbg s c
 							fi
 							if [ "$ARCHIVE" = "true" ]; then
-								exec "cp -v \"/tmp/share/ftp/${file}\" \"/tmp/share/ftp/archives/${file}\""
+								exec "cp -v \"${sourceDir}/tmp/share/ftp/${file}\" \"${sourceDir}/tmp/share/ftp/archives/${file}\""
 							fi
-							exec "rm -v \"/tmp/share/ftp/${file}\""
-							exec "mv -v \"/tmp/share/smb/${smbDest}/${file}\" \"/tmp/share/smb/${smbDest}/validated/${file}\""
+							exec "rm -v \"${sourceDir}/tmp/share/ftp/${file}\""
+							exec "mv -v \"${sourceDir}/tmp/share/smb/${smbDest}/${file}\" \"${sourceDir}/tmp/share/smb/${smbDest}/validated/${file}\""
 						else
 							if [ "$DEBUG" = "true" ]; then
 								echo "Validating file ${file}" | dbg e c
 							fi
-							exec "rm -v \"/tmp/share/smb/${smbDest}/${file}\""
+							exec "rm -v \"${sourceDir}/tmp/share/smb/${smbDest}/${file}\""
 						fi
 					else
 						if [ "$DEBUG" = "true" ]; then
@@ -470,10 +478,10 @@ function start(){
 					fi
 				done
 			else
-				echo "waiting for /tmp/share/smb" | dbg i s
+				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i s
 			fi
 		else
-			echo "waiting for /tmp/share/ftp" | dbg i s
+			echo "waiting for ${sourceDir}/tmp/share/ftp" | dbg i s
 		fi
 	done
 }
@@ -506,12 +514,12 @@ function main(){
 format
 elements
 pkg jq
-import
 pkg s-nail
 pkg zenity
 pkg yad
 pkg cifs-utils
 pkg curlftpfs
+import
 
 while getopts ":vearcf:s:d:" opt; do
 	case "${opt}"
