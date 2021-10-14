@@ -385,7 +385,7 @@ function mountFTP(){
 		exec "rm -vr ${sourceDir}/tmp/share/ftp"
 		exec "mkdir -p ${sourceDir}/tmp/share/ftp"
 	fi
-	exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=10,allow_other"
+	exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
 }
 
 function mountSMB(){
