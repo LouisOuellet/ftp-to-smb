@@ -431,6 +431,9 @@ function start(){
 						exec "mv -- \"${file}\" \"${newFile}\""
 					fi
 				done
+				echo "Removing macOS Cache Files" | dbg i s
+        exec "find ${sourceDir}/tmp/share/ftp/ -name '.DS_Store' -type f -delete"
+        exec "find ${sourceDir}/tmp/share/smb/${smbDest} -name '.DS_Store' -type f -delete"
         exec "cp -ru \"${sourceDir}/tmp/share/ftp/\"* \"${sourceDir}/tmp/share/smb/${smbDest}\""
 				echo "File transfer completed" | dbg i s
 				echo "Converting CSV Files" | dbg i s
