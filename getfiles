@@ -419,7 +419,6 @@ function start(){
 			echo "${sourceDir}/tmp/share/ftp is mounted" | dbg i s
 			if mount | grep ${sourceDir}/tmp/share/smb > /dev/null;then
 				echo "${sourceDir}/tmp/share/smb is mounted" | dbg i s
-				exec "mkdir -p \"${sourceDir}/tmp/share/smb/${smbDest}/validated/\""
 				mountStatus='ready'
 				IFS=$'\n'
 				echo "Removing Unsupported Characters in Filenames" | dbg i s
