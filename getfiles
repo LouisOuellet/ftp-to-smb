@@ -25,9 +25,6 @@ tmpIFS=${IFS}
 # SETS LOCALE
 export LC_ALL=en_US.UTF-8 > /dev/null 2>&1
 
-# Save Current Working Directory
-currentPWD=$(pwd)
-
 # Source Directory
 sourceDir=$(dirname $(readlink -f $0))
 
@@ -116,8 +113,6 @@ function help(){
 	# Script Personalisation
 	Title=""
 	help_options="
-	-a                     => Enable Archive Mode
-                            This mode moves the transferred file in an archive folder instead of deleting it
 	-v                     => Enable Reporting Mode
 	                          Input commands sent are stored in ${logFile}
 	-e                     => Compile errors and warnings after execution
@@ -382,7 +377,7 @@ function mountFTP(){
 	if mount | grep ${sourceDir}/tmp/share/ftp > /dev/null;then
 		exec "sudo umount -lf ${sourceDir}/tmp/share/ftp"
 	else
-		exec "rm -vr ${sourceDir}/tmp/share/ftp"
+		# exec "rm -vr ${sourceDir}/tmp/share/ftp"
 		exec "mkdir -p ${sourceDir}/tmp/share/ftp"
 	fi
 	exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
@@ -392,7 +387,7 @@ function mountSMB(){
 	if mount | grep ${sourceDir}/tmp/share/smb > /dev/null;then
 		exec "sudo umount -lf ${sourceDir}/tmp/share/smb"
 	else
-		exec "rm -vr ${sourceDir}/tmp/share/smb"
+		# exec "rm -vr ${sourceDir}/tmp/share/smb"
 		exec "mkdir -p ${sourceDir}/tmp/share/smb"
 	fi
 	if [ "${smbVers}" != "" ]; then
@@ -418,14 +413,6 @@ function cleanTMP(){
 
 function start(){
 	IFS=${tmpIFS}
-	if [ "$ARCHIVE" = "true" ]; then
-		exec "rsync -av --progress --exclude archives/ ${sourceDir}/tmp/share/ftp/ \"${sourceDir}/tmp/share/smb/${smbDest}\""
-	else
-		exec "rsync -av --progress ${sourceDir}/tmp/share/ftp/ \"${sourceDir}/tmp/share/smb/${smbDest}\""
-	fi
-	if [ "$ARCHIVE" = "true" ]; then
-		exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives/"
-	fi
 	mountStatus='not ready'
 	while [ "$mountStatus" == "not ready" ]; do
 		if mount | grep ${sourceDir}/tmp/share/ftp > /dev/null;then
@@ -434,48 +421,27 @@ function start(){
 				echo "${sourceDir}/tmp/share/smb is mounted" | dbg i s
 				exec "mkdir -p \"${sourceDir}/tmp/share/smb/${smbDest}/validated/\""
 				mountStatus='ready'
-				cd "${sourceDir}/tmp/share/ftp"
-				for file in $(ls); do
-					if [ "$DEBUG" = "true" ]; then
-						echo "Processing file ${file}" | dbg i e
+				IFS=$'\n'
+				echo "Removing Unsupported Characters in Filenames" | dbg i s
+				for file in $(find "${sourceDir}/tmp/share/ftp/" -noleaf -type f -name "*#*");do
+					printOriginalFile=$(sed -r 's/[^0-9a-zA-Z._\/ ]/\\&/g' <<< "${file}")
+					newFile=$(echo "${file}" | sed -r 's/[^0-9a-zA-Z._\/ ]//g' | sed -e 's/  / /g')
+					if [ ! -f "${newFile}" ]; then
+						echo "Renaming \"${printOriginalFile}\" to \"${newFile}\"" | dbg i s
+						exec "mv -- \"${file}\" \"${newFile}\""
 					fi
-					if [[ -d "${sourceDir}/tmp/share/ftp/${file}" ]]; then
-						if [ "$DEBUG" = "true" ]; then
-							echo "${file} is a directory" | dbg i e
-						fi
-					elif [[ -f "${sourceDir}/tmp/share/ftp/${file}" ]]; then
-						if [ "$DEBUG" = "true" ]; then
-							echo "${file} is a file" | dbg i e
-						fi
-						if [ "$DEBUG" = "true" ]; then
-							echo "Validating file ${file}" | dbg i c
-						fi
-						SUMftp=($(md5sum "${sourceDir}/tmp/share/ftp/${file}"))
-						SUMsmb=($(md5sum "${sourceDir}/tmp/share/smb/${smbDest}/${file}"))
-						if [ "$DEBUG" = "true" ]; then
-							echo "${sourceDir}/tmp/share/ftp/${file} : ${SUMftp}" | dbg i v
-							echo "${sourceDir}/tmp/share/smb/${smbDest}/${file} : ${SUMsmb}" | dbg i v
-						fi
-						if [ "$SUMftp" = "$SUMsmb" ]; then
-							if [ "$DEBUG" = "true" ]; then
-								echo "Validating file ${file}" | dbg s c
-							fi
-							if [ "$ARCHIVE" = "true" ]; then
-								exec "cp -v \"${sourceDir}/tmp/share/ftp/${file}\" \"${sourceDir}/tmp/share/ftp/archives/${file}\""
-							fi
-							exec "rm -v \"${sourceDir}/tmp/share/ftp/${file}\""
-							exec "mv -v \"${sourceDir}/tmp/share/smb/${smbDest}/${file}\" \"${sourceDir}/tmp/share/smb/${smbDest}/validated/${file}\""
-						else
-							if [ "$DEBUG" = "true" ]; then
-								echo "Validating file ${file}" | dbg e c
-							fi
-							exec "rm -v \"${sourceDir}/tmp/share/smb/${smbDest}/${file}\""
-						fi
-					else
-						if [ "$DEBUG" = "true" ]; then
-							echo "${file} is not a file" | dbg e e
-						fi
-					fi
+				done
+        exec "cp -ru \"${sourceDir}/tmp/share/ftp/\"* \"${sourceDir}/tmp/share/smb/${smbDest}\""
+				echo "File transfer completed" | dbg i s
+				echo "Converting CSV Files" | dbg i s
+				for fileCSV in $(find "${sourceDir}/tmp/share/smb/${smbDest}" -noleaf -type f -name "*.csv");do
+					fileXLSX=$(echo $fileCSV | sed -r 's/(.*).csv/\1.xlsx/')
+					fileXLSXtoFTP=${sourceDir}$(echo $fileXLSX | sed -r 's/^(.*[\\\/])/\/tmp\/share\/ftp\//')
+					if [[ "${fileXLSX}" != *"commod"* ]];then
+            echo "Converting $fileCSV to $fileXLSX" | dbg i s
+  					exec "eval ${sourceDir}/csv2xlsx -infile ${fileCSV} -outfile ${fileXLSX} -columns 0-14:text,15-17:number -silent -overwrite"
+            exec "cp ${fileXLSX} ${fileXLSXtoFTP}";
+          fi
 				done
 			else
 				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i s
@@ -500,6 +466,8 @@ function main(){
 		getSMB
 	done
 	protectDCMD
+	ftpPass=$(echo $ftpPass | sed -e 's/,/\\,/g')
+	smbPass=$(echo $smbPass | sed -e 's/,/\\,/g')
 	mountFTP
 	mountSMB
 	start
@@ -521,14 +489,13 @@ pkg cifs-utils
 pkg curlftpfs
 import
 
-while getopts ":vearcf:s:d:" opt; do
+while getopts ":vercf:s:d:" opt; do
 	case "${opt}"
 		in
 			v) DEBUG=true;;
 			e) ERRORrpt=true;;
 			d) msgTo=$OPTARG;;
 			r) SENDrpt=true;;
-			a) ARCHIVE=true;;
 			c) clrformat;elements;;
 			f)
 				set -f
