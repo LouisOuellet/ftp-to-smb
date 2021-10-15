@@ -279,23 +279,23 @@ function import(){
 		ftpPort=$(jq -r '.ftp.port' ${sourceDir}/settings.json)
 		ftpUser=$(jq -r '.ftp.username' ${sourceDir}/settings.json)
 		ftpPass=$(jq -r '.ftp.password' ${sourceDir}/settings.json)
-		if [ $smtpHost == null ]; then smtpHost=; fi
-		if [ $smtpPort == null ]; then smtpPort=; fi
-		if [ $smtpUser == null ]; then smtpUser=; fi
-		if [ $smtpPass == null ]; then smtpPass=; fi
-		if [ $msgName == null ]; then msgName=; fi
-		if [ $msgFrom == null ]; then msgFrom=; fi
-		if [ $msgTo == null ]; then msgTo=; fi
-		if [ $smbHost == null ]; then smbHost=; fi
-		if [ $smbShare == null ]; then smbShare=; fi
-		if [ $smbDest == null ]; then smbDest=; fi
-		if [ $smbUser == null ]; then smbUser=; fi
-		if [ $smbPass == null ]; then smbPass=; fi
-		if [ $smbVers == null ]; then smbVers=; fi
-		if [ $ftpHost == null ]; then ftpHost=; fi
-		if [ $ftpPort == null ]; then ftpPort=; fi
-		if [ $ftpUser == null ]; then ftpUser=; fi
-		if [ $ftpPass == null ]; then ftpPass=; fi
+		if [ "$smtpHost" == null ]; then smtpHost=; fi
+		if [ "$smtpPort" == null ]; then smtpPort=; fi
+		if [ "$smtpUser" == null ]; then smtpUser=; fi
+		if [ "$smtpPass" == null ]; then smtpPass=; fi
+		if [ "$msgName" == null ]; then msgName=; fi
+		if [ "$msgFrom" == null ]; then msgFrom=; fi
+		if [ "$msgTo" == null ]; then msgTo=; fi
+		if [ "$smbHost" == null ]; then smbHost=; fi
+		if [ "$smbShare" == null ]; then smbShare=; fi
+		if [ "$smbDest" == null ]; then smbDest=; fi
+		if [ "$smbUser" == null ]; then smbUser=; fi
+		if [ "$smbPass" == null ]; then smbPass=; fi
+		if [ "$smbVers" == null ]; then smbVers=; fi
+		if [ "$ftpHost" == null ]; then ftpHost=; fi
+		if [ "$ftpPort" == null ]; then ftpPort=; fi
+		if [ "$ftpUser" == null ]; then ftpUser=; fi
+		if [ "$ftpPass" == null ]; then ftpPass=; fi
 	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
 		logFile="${logDir}$(date +%s%N).log"
 	else
