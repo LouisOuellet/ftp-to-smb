@@ -2,14 +2,7 @@
 FTP to SMB file transfer script. Including email reporting. I wrote this script because I needed a way to transfer files from various ftp accounts to network shares on a Windows network. Since ADDC does not allow to map a ftp drive at logon, this was my next solution so I could deploy those files to many users centrally. My other solution was to go at each desk and setup the FTP on each machine locally.
 
 ## Details
-The script works as followed. The FTP and SMB shares are mounted. A rsync transfer is performed from the FTP share to the SMB share. Once the rsync transfer has completed, the script loops through each transferred files to validate their md5sum. This allows the script to confirm the integrity of each files that were transferred. Once the script has validated a file, it will move the original files on the FTP share to an archives sub-directory and moves the transferred file into a validated sub-directory. Once the transfers have completed, the report is generated and sent via email if requested. To ensure that the credentials are not retrieved by someone looking into the log file, the script will automatically change any references of any of the settings from the logfile.
-
-## Build docs
-``` bash
-git clone https://github.com/LouisOuellet/ftp-to-smb.git
-cd ftp-to-smb/docs
-make html
-```
+The script works as followed. The FTP and SMB shares are mounted. A cp transfer is performed from the FTP share to the SMB share. 2 modes are available for the script. Default mode is sync. This will always transfer all files from the FTP to the SMB share. This is useful if you need all the files of the FTP and you don't need to keep track of the files you have handle. The second mode is archive. In this mode, getfiles will start by copying the files from the FTP to the SMB. And then, it will mv the files in the FTP to a subdirectory "archives". This allows someone to keep track of what file they have already handled without loosing the original file. If you enable the email reporting, getfiles will send an email notification every time it has run. getfiles can be run manually or using the included service file. To sync multiple FTP, simply clone ftp-to-smb in multiple directories. Don't forget to use unique names for each service.
 
 ## Usage
 ``` bash
@@ -22,7 +15,7 @@ Usage: ./getfiles [options]
 Options:
 
 -a                     => Enable Archive Mode
-                          This mode moves the transferred file in an archive folder instead of deleting it
+                          This mode moves the transferred file in an archive folder
 -v                     => Enable Reporting Mode
                           Input commands sent are stored in
 -e                     => Compile errors and warnings after execution
