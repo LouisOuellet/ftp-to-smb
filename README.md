@@ -97,3 +97,10 @@ Additionnally you can set the default ftp and smb settings
     }
 }
 ```
+To enable archive mode on the service
+
+``` json
+{
+    "archive":true
+}
+```

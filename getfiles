@@ -113,6 +113,7 @@ function help(){
 	# Script Personalisation
 	Title=""
 	help_options="
+	-a                     => Enable Archive Mode
 	-v                     => Enable Reporting Mode
 	                          Input commands sent are stored in ${logFile}
 	-e                     => Compile errors and warnings after execution
@@ -279,6 +280,7 @@ function import(){
 		ftpPort=$(jq -r '.ftp.port' ${sourceDir}/settings.json)
 		ftpUser=$(jq -r '.ftp.username' ${sourceDir}/settings.json)
 		ftpPass=$(jq -r '.ftp.password' ${sourceDir}/settings.json)
+		ARCHIVE=$(jq -r '.archive' ${sourceDir}/settings.json)
 		if [ "$smtpHost" == null ]; then smtpHost=; fi
 		if [ "$smtpPort" == null ]; then smtpPort=; fi
 		if [ "$smtpUser" == null ]; then smtpUser=; fi
@@ -296,6 +298,7 @@ function import(){
 		if [ "$ftpPort" == null ]; then ftpPort=; fi
 		if [ "$ftpUser" == null ]; then ftpUser=; fi
 		if [ "$ftpPass" == null ]; then ftpPass=; fi
+		if [ "$ARCHIVE" == null ]; then ARCHIVE=; fi
 	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
 		logFile="${logDir}$(date +%s%N).log"
 	else
@@ -433,7 +436,15 @@ function start(){
 				echo "Removing macOS Cache Files" | dbg i s
         exec "find ${sourceDir}/tmp/share/ftp/ -name '.DS_Store' -type f -delete"
         exec "find ${sourceDir}/tmp/share/smb/${smbDest} -name '.DS_Store' -type f -delete"
-        exec "cp -ru \"${sourceDir}/tmp/share/ftp/\"* \"${sourceDir}/tmp/share/smb/${smbDest}\""
+        if [ "$ARCHIVE" = "true" ]; then
+          exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
+          for file in $(find "${sourceDir}/tmp/share/ftp/." -type f -not -path "*/archives/*");do
+            exec "cp -vu \"${file}\" \"${sourceDir}/tmp/share/smb/${smbDest}\"."
+            exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
+          done
+        else
+          exec "cp -vru \"${sourceDir}/tmp/share/ftp/\"* \"${sourceDir}/tmp/share/smb/${smbDest}\""
+        fi
 				echo "File transfer completed" | dbg i s
 				echo "Converting CSV Files" | dbg i s
 				for fileCSV in $(find "${sourceDir}/tmp/share/smb/${smbDest}" -noleaf -type f -name "*.csv");do
@@ -491,9 +502,10 @@ pkg cifs-utils
 pkg curlftpfs
 import
 
-while getopts ":vercf:s:d:" opt; do
+while getopts ":vearcf:s:d:" opt; do
 	case "${opt}"
 		in
+			a) ARCHIVE=true;;
 			v) DEBUG=true;;
 			e) ERRORrpt=true;;
 			d) msgTo=$OPTARG;;
