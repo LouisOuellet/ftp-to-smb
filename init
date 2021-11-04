@@ -13,14 +13,14 @@ sourceDir=$(dirname $(readlink -f $0))
 case "$1" in
 start)
    ${sourceDir}/service &
-   echo $!>/var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-service.pid
+   echo $!>${sourceDir}/tmp/service.pid
    ;;
 stop)
-   kill `cat /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-service.pid`
-   rm /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-service.pid
-   if [ -e /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-getfiles.pid ]; then
-     kill `cat /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-getfiles.pid`
-     rm /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-getfiles.pid
+   kill `cat ${sourceDir}/tmp/service.pid`
+   rm ${sourceDir}/tmp/service.pid
+   if [ -e ${sourceDir}/tmp/getfiles.pid ]; then
+     kill `cat ${sourceDir}/tmp/getfiles.pid`
+     rm ${sourceDir}/tmp/getfiles.pid
    fi
    ;;
 restart)
@@ -28,8 +28,8 @@ restart)
    $0 start
    ;;
 status)
-   if [ -e /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-service.pid ]; then
-      echo service is running, pid=`cat /var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-service.pid`
+   if [ -e ${sourceDir}/tmp/service.pid ]; then
+      echo service is running, pid=`cat ${sourceDir}/tmp/service.pid`
    else
       echo service is NOT running
       exit 1

@@ -29,7 +29,7 @@ scriptname=$(echo $0 | sed -e 's@.*/@@')
 sourceDir=$(dirname $(readlink -f $0))
 
 # Initialize PID
-echo $!>/var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-getfiles.pid
+echo $!>${sourceDir}/tmp/getfiles.pid
 
 # Set PATH
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
