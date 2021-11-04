@@ -439,7 +439,8 @@ function start(){
         exec "find ${sourceDir}/tmp/share/smb/${smbDest} -name '.DS_Store' -type f -delete"
         for file in $(find "${sourceDir}/tmp/share/ftp/." -type f -not -path "*/archives/*");do
           file=$(echo ${file} | sed -e 's/\.\///g')
-          transfer=$(echo ${file} | sed -e "s/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/${smbDest}\//")
+          pattern=$(echo ${smbDest} | sed -e 's/\//\\\//g')
+          transfer=$(echo ${file} | sed -e 's/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/'${pattern}'/g')
           exec "cp -vu \"${file}\" \"${transfer}\""
           # if [ "$ARCHIVE" = "true" ]; then
           #   exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
