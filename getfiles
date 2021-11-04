@@ -516,7 +516,7 @@ pkg cifs-utils
 pkg curlftpfs
 import
 
-while getopts ":vearcf:s:d:" opt; do
+while getopts ":veaircf:s:d:" opt; do
 	case "${opt}"
 		in
 			a) ARCHIVE=true;;
