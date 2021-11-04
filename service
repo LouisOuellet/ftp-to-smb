@@ -4,7 +4,6 @@ sourceDir=$(dirname $(readlink -f $0))
 
 while(true);do
   /bin/bash ${sourceDir}/getfiles
-  echo $!>/var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-getfiles.pid
   if [ -f "${sourceDir}/tmp" ]; then
     rm -r ${sourceDir}/tmp
   fi

@@ -10,12 +10,6 @@
 # BASH SETUP
 #==============================================================================
 
-# Initialize Timer
-SECOND=0
-
-# Script name
-scriptname=$(echo $0 | sed -e 's@.*/@@')
-
 # Set Bash
 set -o pipefail
 
@@ -25,8 +19,17 @@ tmpIFS=${IFS}
 # SETS LOCALE
 export LC_ALL=en_US.UTF-8 > /dev/null 2>&1
 
+# Initialize Timer
+SECOND=0
+
+# Script name
+scriptname=$(echo $0 | sed -e 's@.*/@@')
+
 # Source Directory
 sourceDir=$(dirname $(readlink -f $0))
+
+# Initialize PID
+echo $!>/var/run/$(echo ${sourceDir} | sed -e 's/\//-/g')-getfiles.pid
 
 # Set PATH
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
@@ -441,7 +444,7 @@ function start(){
           file=$(echo ${file} | sed -e 's/\.\///g')
           pattern=$(echo ${smbDest} | sed -e 's/\//\\\//g')
           transfer=$(echo ${file} | sed -e 's/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/'${pattern}'/g')
-          exec "cp -v \"${file}\" \"${transfer}\""
+          exec "cp -vu \"${file}\" \"${transfer}\""
           # if [ "$ARCHIVE" = "true" ]; then
           #   exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
           #   exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
