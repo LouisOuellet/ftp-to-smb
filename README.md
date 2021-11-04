@@ -43,10 +43,7 @@ These are required so that the script can mount both SMB and FTP shares as the l
 Enabling the service will allow getfiles to constantly sync the 2 shares together.
 
 ```BASH
-sudo ln -s /opt/php-pdf/init /etc/init.d/getfiles
-sudo systemctl daemon-reload
-sudo systemctl enable getfiles
-sudo systemctl start getfiles
+./getfiles -i
 ```
 
 ## Configuring getfiles settings
