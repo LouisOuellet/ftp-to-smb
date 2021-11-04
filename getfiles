@@ -438,19 +438,20 @@ function start(){
         exec "find ${sourceDir}/tmp/share/ftp/ -name '.DS_Store' -type f -delete"
         exec "find ${sourceDir}/tmp/share/smb/${smbDest} -name '.DS_Store' -type f -delete"
         for file in $(find "${sourceDir}/tmp/share/ftp/." -type f -not -path "*/archives/*");do
-          file=$(echo ${file} | sed -e 's/\.\///')
-          exec "cp -vu \"${file}\" \"${sourceDir}/tmp/share/smb/${smbDest}\"."
-          if [ "$ARCHIVE" = "true" ]; then
-            exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
-            exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
-          fi
-          if [[ "${file}" != *".csv" ]];then
-            excel=$(echo $file | sed -r 's/(.*).csv/\1.xlsx/')
-            smb=$(echo $excel | sed -e "s/${sourceDir}\/tmp\/share\/ftp\//${sourceDir}\/tmp\/share\/smb\/${smbDest}/")
-            echo "Converting $file to $excel" | dbg i s
-  					exec "eval ${sourceDir}/csv2xlsx -infile ${file} -outfile ${excel} -columns 0-14:text,15-17:number -silent -overwrite"
-            exec "cp -vu ${excel} ${smb}";
-          fi
+          file=$(echo ${file} | sed -e 's/\.\///g')
+          transfer=$($(echo ${file} | sed -e 's/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/${smbDest}\//'))
+          exec "cp -vu \"${file}\" \"${transfer}\""
+          # if [ "$ARCHIVE" = "true" ]; then
+          #   exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
+          #   exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
+          # fi
+          # if [[ "${file}" != *".csv" ]];then
+          #   excel=$(echo $file | sed -r 's/(.*).csv/\1.xlsx/')
+          #   smb=$(echo $excel | sed -e "s/${sourceDir}\/tmp\/share\/ftp\//${sourceDir}\/tmp\/share\/smb\/${smbDest}/")
+          #   echo "Converting $file to $excel" | dbg i s
+  				# 	exec "eval ${sourceDir}/csv2xlsx -infile ${file} -outfile ${excel} -columns 0-14:text,15-17:number -silent -overwrite"
+          #   exec "cp -vu ${excel} ${smb}";
+          # fi
         done
 				echo "File transfer completed" | dbg i s
 			else
