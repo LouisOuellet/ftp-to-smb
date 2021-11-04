@@ -449,7 +449,7 @@ function start(){
             exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
             exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
           fi
-          if [[ "${transfer}" != *".csv" ]];then
+          if [[ "${transfer}" == *".csv" ]];then
             excel=$(echo ${transfer} | sed -r 's/(.*).csv/\1.xlsx/')
             echo "Converting ${transfer} to ${excel}" | dbg i s
   					exec "eval ${sourceDir}/csv2xlsx -infile \"${transfer}\" -outfile \"${excel}\" -columns 0-14:text,15-17:number -silent -overwrite"
