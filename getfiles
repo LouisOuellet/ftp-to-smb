@@ -499,6 +499,7 @@ function install(){
   exec "sudo systemctl daemon-reload"
   exec "sudo systemctl enable ${name}"
   exec "sudo systemctl start ${name}"
+  exec "sudo systemctl status ${name}"
 }
 
 #==============================================================================
