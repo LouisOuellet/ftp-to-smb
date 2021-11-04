@@ -437,26 +437,21 @@ function start(){
 				echo "Removing macOS Cache Files" | dbg i s
         exec "find ${sourceDir}/tmp/share/ftp/ -name '.DS_Store' -type f -delete"
         exec "find ${sourceDir}/tmp/share/smb/${smbDest} -name '.DS_Store' -type f -delete"
-        if [ "$ARCHIVE" = "true" ]; then
-          exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
-          for file in $(find "${sourceDir}/tmp/share/ftp/." -type f -not -path "*/archives/*");do
-            exec "cp -vu \"${file}\" \"${sourceDir}/tmp/share/smb/${smbDest}\"."
+        for file in $(find "${sourceDir}/tmp/share/ftp/." -type f -not -path "*/archives/*");do
+          exec "cp -vu \"${file}\" \"${sourceDir}/tmp/share/smb/${smbDest}\"."
+          if [ "$ARCHIVE" = "true" ]; then
+            exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
             exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
-          done
-        else
-          exec "cp -vru \"${sourceDir}/tmp/share/ftp/\"* \"${sourceDir}/tmp/share/smb/${smbDest}\""
-        fi
-				echo "File transfer completed" | dbg i s
-				echo "Converting CSV Files" | dbg i s
-				for fileCSV in $(find "${sourceDir}/tmp/share/smb/${smbDest}" -noleaf -type f -name "*.csv");do
-					fileXLSX=$(echo $fileCSV | sed -r 's/(.*).csv/\1.xlsx/')
-					fileXLSXtoFTP=${sourceDir}$(echo $fileXLSX | sed -r 's/^(.*[\\\/])/\/tmp\/share\/ftp\//')
-					if [[ "${fileXLSX}" != *"commod"* ]];then
-            echo "Converting $fileCSV to $fileXLSX" | dbg i s
-  					exec "eval ${sourceDir}/csv2xlsx -infile ${fileCSV} -outfile ${fileXLSX} -columns 0-14:text,15-17:number -silent -overwrite"
-            exec "cp ${fileXLSX} ${fileXLSXtoFTP}";
           fi
-				done
+          if [[ "${file}" != *".csv" ]];then
+            excel=$(echo $file | sed -r 's/(.*).csv/\1.xlsx/')
+            smb=$(echo $excel | sed -e "s/${sourceDir}\/tmp\/share\/ftp\//${sourceDir}\/tmp\/share\/smb\/${smbDest}/")
+            echo "Converting $file to $excel" | dbg i s
+  					exec "eval ${sourceDir}/csv2xlsx -infile ${file} -outfile ${excel} -columns 0-14:text,15-17:number -silent -overwrite"
+            exec "cp -vu ${excel} ${smb}";
+          fi
+        done
+				echo "File transfer completed" | dbg i s
 			else
 				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i s
 			fi
