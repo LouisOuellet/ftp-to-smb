@@ -124,6 +124,7 @@ function help(){
 	-d                     => Set report destination email
 	-r                     => Send report via email
 	-c                     => Disable all formatting
+	-i                     => install service
 	-f                     => Specify a FTP ex: \"ftp.domain.com username password\"
 	-s                     => Specify a SMB ex: \"0.0.0.0 shareName destinationDirectory username password\"
 	"
@@ -491,6 +492,16 @@ function main(){
 	cleanTMP
 }
 
+function install(){
+  installing="true";
+  name=$(echo "${sourceDir}" | sed -e 's//\//' | sed -e 's//\/-/g')"-getfiles"
+  echo "sudo ln -s ${sourceDir}/init /etc/init.d/${name}"
+  # exec "sudo ln -s ${sourceDir}/init /etc/init.d/${name}"
+  # exec "sudo systemctl daemon-reload"
+  # exec "sudo systemctl enable ${name}"
+  # exec "sudo systemctl start ${name}"
+}
+
 #==============================================================================
 # RUN OPTIONS & FUNCTIONS
 #==============================================================================
@@ -514,6 +525,7 @@ while getopts ":vearcf:s:d:" opt; do
 			d) msgTo=$OPTARG;;
 			r) SENDrpt=true;;
 			c) clrformat;elements;;
+			i) install;;
 			f)
 				set -f
 				IFS=' '
@@ -557,7 +569,9 @@ shift $((OPTIND -1))
 # RUN SCRIPT
 #==============================================================================
 
-main
+if [ "$installing" != "true" ]; then
+  main
+fi
 
 if [ "$DEBUG" = "true" ]; then
     duration=$SECONDS
