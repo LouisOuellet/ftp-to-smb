@@ -474,7 +474,9 @@ function main(){
 		if (( $count > 3 )); then exit; fi
 		getSMB
 	done
-	protectDCMD
+  if [ "$SENDrpt" = "true" ]; then
+  	protectDCMD
+  fi
 	ftpPass=$(echo $ftpPass | sed -e 's/,/\\,/g')
 	smbPass=$(echo $smbPass | sed -e 's/,/\\,/g')
 	mountFTP
