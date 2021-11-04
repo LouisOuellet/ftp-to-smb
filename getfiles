@@ -494,7 +494,7 @@ function main(){
 
 function install(){
   installing="true";
-  name=$(echo "${sourceDir}" | sed -e 's//\//' | sed -e 's//\/-/g')"-getfiles"
+  name=$(echo "${sourceDir}" | sed -e 's/\///' | sed -e 's/\//-/g')"-getfiles"
   echo "sudo ln -s ${sourceDir}/init /etc/init.d/${name}"
   # exec "sudo ln -s ${sourceDir}/init /etc/init.d/${name}"
   # exec "sudo systemctl daemon-reload"
