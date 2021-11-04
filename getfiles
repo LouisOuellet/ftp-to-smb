@@ -444,18 +444,18 @@ function start(){
           file=$(echo ${file} | sed -e 's/\.\///g')
           pattern=$(echo ${smbDest} | sed -e 's/\//\\\//g')
           transfer=$(echo ${file} | sed -e 's/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/'${pattern}'/g')
-          exec "cp -vu \"${file}\" \"${transfer}\""
-          if [ "$ARCHIVE" = "true" ]; then
-            exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
-            exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
-          fi
-          if [[ "${file}" != *".csv" ]];then
-            excel=$(echo $file | sed -r 's/(.*).csv/\1.xlsx/')
-            smb=$(echo $excel | sed -e "s/${sourceDir}\/tmp\/share\/ftp\//${sourceDir}\/tmp\/share\/smb\/${smbDest}/")
-            echo "Converting $file to $excel" | dbg i s
-  					exec "eval ${sourceDir}/csv2xlsx -infile ${file} -outfile ${excel} -columns 0-14:text,15-17:number -silent -overwrite"
-            exec "cp -vu ${excel} ${smb}";
-          fi
+          # exec "cp -vu \"${file}\" \"${transfer}\""
+          # if [ "$ARCHIVE" = "true" ]; then
+          #   exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
+          #   exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
+          # fi
+          # if [[ "${file}" != *".csv" ]];then
+          #   excel=$(echo $file | sed -r 's/(.*).csv/\1.xlsx/')
+          #   smb=$(echo $excel | sed -e "s/${sourceDir}\/tmp\/share\/ftp\//${sourceDir}\/tmp\/share\/smb\/${smbDest}/")
+          #   echo "Converting $file to $excel" | dbg i s
+  				# 	exec "eval ${sourceDir}/csv2xlsx -infile ${file} -outfile ${excel} -columns 0-14:text,15-17:number -silent -overwrite"
+          #   exec "cp -vu ${excel} ${smb}";
+          # fi
         done
 				echo "File transfer completed" | dbg i s
 			else
