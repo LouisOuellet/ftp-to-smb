@@ -4,6 +4,14 @@ FTP to SMB file transfer script. Including email reporting. I wrote this script 
 ## Details
 The script works as followed. The FTP and SMB shares are mounted. A cp transfer is performed from the FTP share to the SMB share. 2 modes are available for the script. Default mode is sync. This will always transfer all files from the FTP to the SMB share. This is useful if you need all the files of the FTP and you don't need to keep track of the files you have handle. The second mode is archive. In this mode, getfiles will start by copying the files from the FTP to the SMB. And then, it will mv the files in the FTP to a subdirectory "archives". This allows someone to keep track of what file they have already handled without loosing the original file. If you enable the email reporting, getfiles will send an email notification every time it has run. getfiles can be run manually or using the included service file. To sync multiple FTP, simply clone ftp-to-smb in multiple directories. Don't forget to use unique names for each service.
 
+## Changelog
+
+ - Added support for FTPS transfer
+ - A timeout was added to both mount command to prevent the script from getting stuck if an error occur during mounting.
+ - Fixed the service file to be more dynamic. Specially when running multiple instances of the script.
+ - Added the PIDs to the tmp folder instead of the /var/run folder.
+ - Added an install script to make it easier to setup as a service on debian based distro.
+
 ## Usage
 ``` bash
 $ ./getfiles
