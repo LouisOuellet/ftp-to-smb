@@ -388,11 +388,15 @@ function mountFTP(){
 		# exec "rm -vr ${sourceDir}/tmp/share/ftp"
 		exec "mkdir -p ${sourceDir}/tmp/share/ftp"
 	fi
-  if [ "$DEBUG" = "true" ]; then
-    exec "sudo curlftpfs -v -o user='${ftpUser}:${ftpPass}' ftp://${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
-  else
-	  exec "sudo curlftpfs -o user='${ftpUser}:${ftpPass}' ftp://${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
+  CMD='sudo curlftpfs'
+  HEAD='ftp://'
+  if [ "${DEBUG}" = "true" ]; then
+    CMD="${CMD} -v"
   fi
+  if [ "${ftpPort}" = "990" ]; then
+    HEAD='ftps://'
+  fi
+  exec "${CMD} -o user='${ftpUser}:${ftpPass}' ${HEAD}${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
 }
 
 function mountSMB(){
@@ -426,6 +430,7 @@ function cleanTMP(){
 function start(){
 	IFS=${tmpIFS}
 	mountStatus='not ready'
+  count=0
 	while [ "$mountStatus" == "not ready" ]; do
 		if mount | grep ${sourceDir}/tmp/share/ftp > /dev/null;then
 			echo "${sourceDir}/tmp/share/ftp is mounted" | dbg i s
@@ -464,10 +469,18 @@ function start(){
 				echo "File transfer completed" | dbg i s
 			else
 				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i s
+        count=$((count+1))
+        sleep 5
 			fi
 		else
 			echo "waiting for ${sourceDir}/tmp/share/ftp" | dbg i s
+      count=$((count+1))
+      sleep 5
 		fi
+    if [ $count >= 12 ]; then
+      break
+      exit 0
+    fi
 	done
 }
 
