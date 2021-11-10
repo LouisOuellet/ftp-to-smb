@@ -181,6 +181,7 @@ function dbg(){
         ;;
       empty|e)
         ACTION=$EMPT
+        ERROR="true"
         ;;
       output|o)
         ACTION=$OUT
@@ -217,7 +218,6 @@ function exec(){
     if eval $1 2>&1 | dbg o o;then
       echo "$1" | dbg s r
     else
-      ERROR='true'
       echo "$1" | dbg e r
     fi
   else
@@ -488,7 +488,6 @@ function start(){
       sleep 5
 		fi
     if (( $count >= 12 )); then
-      ERROR='true'
       break
       exit 0
     fi
