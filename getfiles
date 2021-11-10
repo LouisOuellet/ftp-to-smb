@@ -163,7 +163,6 @@ function dbg(){
         ;;
       error|e)
         TYPE=$ERROR
-        setError
         ;;
       output|o)
         TYPE=$OUTPUT
@@ -224,6 +223,7 @@ function exec(){
       echo "$1" | dbg s r
     else
       echo "$1" | dbg e r
+      setError
     fi
   else
     error "Missing Argument(s)"
