@@ -31,6 +31,9 @@ sourceDir=$(dirname $(readlink -f $0))
 # Initialize PID
 echo $!>${sourceDir}/tmp/getfiles.pid
 
+# Initialize sysERROR
+sysERROR=
+
 # Set PATH
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
 
