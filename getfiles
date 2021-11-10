@@ -150,6 +150,8 @@ function error(){
   exit 0
 }
 
+function setError(){ sysERROR=true; }
+
 function dbg(){
   if [ "$1" != "" ] && [ "$2" != "" ]; then
     case "$1" in
@@ -161,7 +163,7 @@ function dbg(){
         ;;
       error|e)
         TYPE=$ERROR
-        sysERROR=true
+        setError
         ;;
       output|o)
         TYPE=$OUTPUT
@@ -209,7 +211,6 @@ function dbg(){
       else
         printf "${TYPE}$(PDATE)${ACTION} ${DCMDout}\n"
       fi
-      echo "sysERROR=${sysERROR}"
     done
   else
     error "Missing Argument(s)"
