@@ -217,6 +217,7 @@ function exec(){
     if eval $1 2>&1 | dbg o o;then
       echo "$1" | dbg s r
     else
+      ERROR='true'
       echo "$1" | dbg e r
     fi
   else
@@ -272,9 +273,10 @@ function import(){
 	  smtpPort=$(jq -r '.smtp.port' ${sourceDir}/settings.json)
 		smtpUser=$(jq -r '.smtp.username' ${sourceDir}/settings.json)
 		smtpPass=$(jq -r '.smtp.password' ${sourceDir}/settings.json)
-		msgName=$(jq -r '.send.name' ${sourceDir}/settings.json)
-		msgFrom=$(jq -r '.send.from' ${sourceDir}/settings.json)
-	  msgTo=$(jq -r '.send.to' ${sourceDir}/settings.json)
+		msgName=$(jq -r '.report.name' ${sourceDir}/settings.json)
+		msgFrom=$(jq -r '.report.from' ${sourceDir}/settings.json)
+	  msgTo=$(jq -r '.report.to' ${sourceDir}/settings.json)
+	  msgSend=$(jq -r '.report.send' ${sourceDir}/settings.json)
 		smbHost=$(jq -r '.smb.host' ${sourceDir}/settings.json)
 		smbShare=$(jq -r '.smb.share' ${sourceDir}/settings.json)
 	  smbDest=$(jq -r '.smb.destination' ${sourceDir}/settings.json)
@@ -293,6 +295,7 @@ function import(){
 		if [ "$msgName" == null ]; then msgName=; fi
 		if [ "$msgFrom" == null ]; then msgFrom=; fi
 		if [ "$msgTo" == null ]; then msgTo=; fi
+		if [ "$msgSend" == null ]; then msgSend=; fi
 		if [ "$smbHost" == null ]; then smbHost=; fi
 		if [ "$smbShare" == null ]; then smbShare=; fi
 		if [ "$smbDest" == null ]; then smbDest=; fi
@@ -304,6 +307,7 @@ function import(){
 		if [ "$ftpUser" == null ]; then ftpUser=; fi
 		if [ "$ftpPass" == null ]; then ftpPass=; fi
 		if [ "$ARCHIVE" == null ]; then ARCHIVE=; fi
+    if [ "$msgSend" == 'true' ]; then SENDrpt='true'; fi
 	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
 		logFile="${logDir}$(date +%s%N).log"
 	else
@@ -484,6 +488,7 @@ function start(){
       sleep 5
 		fi
     if (( $count >= 12 )); then
+      ERROR='true'
       break
       exit 0
     fi
@@ -503,7 +508,7 @@ function main(){
 		if (( $count > 3 )); then exit; fi
 		getSMB
 	done
-  if [ "$SENDrpt" = "true" ]; then
+  if [ "$SENDrpt" = "true" ] && [ "$DEBUG" != "true" ]; then
   	protectDCMD
   fi
 	ftpPass=$(echo $ftpPass | sed -e 's/,/\\,/g')
@@ -607,7 +612,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "#############################################################" | dbg i e
 fi
 
-if [ "$SENDrpt" = "true" ]; then
+if [ "$ERROR" = "true" ] && [ "$SENDrpt" = "true" ]; then
     send "Transfer from ${ftpHost}" "Transfer from ${ftpHost} to ${smbHost} was completed. See attached report."
 fi
 

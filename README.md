@@ -65,7 +65,7 @@ To support email reporting, you will need to setup a smtp account. So in the dir
         "username": "username@domain.com",
         "password": "Password123"
     },
-    "send":{
+    "report":{
         "name": "Monitoring",
         "from": "monitoring@domain.com",
         "to": "destination@domain.com"
