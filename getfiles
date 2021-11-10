@@ -470,7 +470,7 @@ function start(){
 			else
 				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i s
         count=$((count+1))
-        if [[ $count >= 12 ]]; then
+        if (( $count >= 12 )); then
           echo "Unable to mount SMB" | dbg i e
         fi
         sleep 5
@@ -478,12 +478,12 @@ function start(){
 		else
 			echo "waiting for ${sourceDir}/tmp/share/ftp" | dbg i s
       count=$((count+1))
-      if [[ $count >= 12 ]]; then
+      if (( $count >= 12 )); then
         echo "Unable to mount FTP" | dbg i e
       fi
       sleep 5
 		fi
-    if [[ $count >= 12 ]]; then
+    if (( $count >= 12 )); then
       break
       exit 0
     fi
@@ -594,7 +594,7 @@ shift $((OPTIND -1))
 
 if [ "$installing" != "true" ]; then
   main
-  if [[ $((duration / 60)) <= 0 ]] && [[ "$DEBUG" != "true" ]]; then
+  if (( $((duration / 60)) <= 0 )) && [[ "$DEBUG" != "true" ]]; then
     sleep 5m
   fi
 fi
