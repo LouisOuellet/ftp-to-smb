@@ -158,6 +158,7 @@ function dbg(){
         ;;
       error|e)
         TYPE=$ERROR
+        sysERROR=true
         ;;
       output|o)
         TYPE=$OUTPUT
@@ -181,7 +182,6 @@ function dbg(){
         ;;
       empty|e)
         ACTION=$EMPT
-        sysERROR=true
         ;;
       output|o)
         ACTION=$OUT
@@ -472,18 +472,18 @@ function start(){
         done
 				echo "File transfer completed" | dbg i s
 			else
-				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i s
+				echo "waiting for ${sourceDir}/tmp/share/smb" | dbg i t
         count=$((count+1))
         if (( $count >= 12 )); then
-          echo "Unable to mount SMB" | dbg i e
+          echo "Unable to mount SMB" | dbg e t
         fi
         sleep 5
 			fi
 		else
-			echo "waiting for ${sourceDir}/tmp/share/ftp" | dbg i s
+			echo "waiting for ${sourceDir}/tmp/share/ftp" | dbg i t
       count=$((count+1))
       if (( $count >= 12 )); then
-        echo "Unable to mount FTP" | dbg i e
+        echo "Unable to mount FTP" | dbg e t
       fi
       sleep 5
 		fi
