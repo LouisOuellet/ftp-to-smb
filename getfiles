@@ -181,7 +181,7 @@ function dbg(){
         ;;
       empty|e)
         ACTION=$EMPT
-        ERROR="true"
+        sysERROR="true"
         ;;
       output|o)
         ACTION=$OUT
@@ -611,7 +611,7 @@ if [ "$DEBUG" = "true" ]; then
     echo "#############################################################" | dbg i e
 fi
 
-if [ "$ERROR" = "true" ] && [ "$SENDrpt" = "true" ]; then
+if [ "$sysERROR" = "true" ] && [ "$SENDrpt" = "true" ]; then
     send "Error during the transfer from ${ftpHost}" "Some error occured during the transfer from ${ftpHost} to ${smbHost}. See attached report."
 fi
 
