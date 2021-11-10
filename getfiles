@@ -181,7 +181,7 @@ function dbg(){
         ;;
       empty|e)
         ACTION=$EMPT
-        sysERROR="true"
+        sysERROR=true
         ;;
       output|o)
         ACTION=$OUT
