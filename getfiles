@@ -206,6 +206,7 @@ function dbg(){
       else
         printf "${TYPE}$(PDATE)${ACTION} ${DCMDout}\n"
       fi
+      if [ "${TYPE}" = "${ERROR}"]; then sysERROR=true; fi
     done
   else
     error "Missing Argument(s)"
