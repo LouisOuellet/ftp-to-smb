@@ -481,6 +481,7 @@ function start(){
         count=$((count+1))
         if (( $count >= 12 )); then
           echo "Unable to mount SMB" | dbg e t
+          setError
         fi
         sleep 5
 			fi
@@ -489,6 +490,7 @@ function start(){
       count=$((count+1))
       if (( $count >= 12 )); then
         echo "Unable to mount FTP" | dbg e t
+        setError
       fi
       sleep 5
 		fi
