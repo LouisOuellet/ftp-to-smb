@@ -594,6 +594,9 @@ shift $((OPTIND -1))
 
 if [ "$installing" != "true" ]; then
   main
+  if [ $(($duration / 60)) <= 0 ]; then
+    sleep 5m
+  fi
 fi
 
 if [ "$DEBUG" = "true" ]; then
