@@ -611,6 +611,8 @@ if [ "$DEBUG" = "true" ]; then
     echo "#############################################################" | dbg i e
 fi
 
+echo "sysERROR=${sysERROR}"
+echo "SENDrpt=${SENDrpt}"
 if [ "$sysERROR" = "true" ] && [ "$SENDrpt" = "true" ]; then
     send "Error during the transfer from ${ftpHost}" "Some error occured during the transfer from ${ftpHost} to ${smbHost}. See attached report."
 fi
