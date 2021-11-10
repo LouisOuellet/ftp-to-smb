@@ -598,7 +598,6 @@ shift $((OPTIND -1))
 #==============================================================================
 
 if [ "$installing" != "true" ]; then
-  ERROR='true'
   main
   if (( $((duration / 60)) <= 0 )) && [[ "$DEBUG" != "true" ]]; then
     sleep 5m
@@ -614,7 +613,7 @@ if [ "$DEBUG" = "true" ]; then
 fi
 
 if [ "$ERROR" = "true" ] && [ "$SENDrpt" = "true" ]; then
-    send "Transfer from ${ftpHost}" "Transfer from ${ftpHost} to ${smbHost} was completed. See attached report."
+    send "Error during the transfer from ${ftpHost}" "Some error occured during the transfer from ${ftpHost} to ${smbHost}. See attached report."
 fi
 
 if [ "$ERRORrpt" = 'true' ]; then
