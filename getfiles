@@ -472,8 +472,8 @@ function start(){
           file=$(echo ${file} | sed -e 's/\.\///g')
           pattern=$(echo ${smbDest} | sed -e 's/\//\\\//g')
           transfer=$(echo ${file} | sed -e 's/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/'${pattern}'/g')
-          # exec "cp -vu \"${file}\" \"${transfer}\""
-          exec "cp -v \"${file}\" \"${transfer}\""
+          exec "cp -vu \"${file}\" \"${transfer}\""
+          # exec "cp -v \"${file}\" \"${transfer}\""
           if [ "$ARCHIVE" = "true" ]; then
             exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
             exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
