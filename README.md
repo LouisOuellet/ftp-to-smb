@@ -14,6 +14,14 @@ The script works as followed. The FTP and SMB shares are mounted. A cp transfer 
  - Added the PIDs to the tmp folder instead of the /var/run folder.
  - Added an install script to make it easier to setup as a service on debian based distro.
 
+## To Do?
+
+ - Add a setting for frequency (in seconds)
+ - Add a setting to enable/disable the conversion of CSV file.
+ - Add a setting to control wether to update or not local files.
+ - Add a setting to enable/disable the transfer of the converted CSV file.
+ - change the directory of the now transfered converted CSV file to the same as the original.
+
 ## Usage
 ``` bash
 $ ./getfiles
