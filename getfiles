@@ -13,11 +13,14 @@
 # Set Bash
 set -o pipefail
 
-# Save Current IFS
-tmpIFS=${IFS}
-
 # SETS LOCALE
 export LC_ALL=en_US.UTF-8 > /dev/null 2>&1
+
+# Set PATH
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
+
+# Save Current IFS
+tmpIFS=${IFS}
 
 # Initialize Timer
 SECOND=0
@@ -34,8 +37,8 @@ echo $!>${sourceDir}/tmp/getfiles.pid
 # Initialize sysERROR
 sysERROR=
 
-# Set PATH
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
+# Initialize canRun
+canRun=true
 
 #==============================================================================
 # FORMATTING
@@ -127,7 +130,8 @@ function help(){
 	-d                     => Set report destination email
 	-r                     => Send report via email
 	-c                     => Disable all formatting
-	-i                     => install service
+	-i                     => install and configure/reconfigure service
+	-u                     => uninstall service
 	-f                     => Specify a FTP ex: \"ftp.domain.com username password\"
 	-s                     => Specify a SMB ex: \"0.0.0.0 shareName destinationDirectory username password\"
 	"
@@ -531,14 +535,34 @@ function main(){
 	cleanTMP
 }
 
+function uninstall(){
+  canRun="false";
+  if [ -f /etc/init.d/${name} ]; then
+    exec "sudo systemctl status ${name}"
+    exec "sudo systemctl stop ${name}"
+    exec "sudo systemctl disable ${name}"
+    exec "sudo rm /etc/init.d/${name}"
+    exec "sudo systemctl daemon-reload"
+  fi
+  if [ -f ${sourceDir}/settings.json ]; then
+    read -p "Do you want to remove configuration file(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      exec "rm ${sourceDir}/settings.json"
+    fi
+  fi
+}
+
 function install(){
-  installing="true";
+  canRun="false";
   name=$(echo "${sourceDir}" | sed -e 's/\///' | sed -e 's/\//-/g')"-getfiles"
-  exec "sudo ln -s ${sourceDir}/init /etc/init.d/${name}"
-  exec "sudo systemctl daemon-reload"
-  exec "sudo systemctl enable ${name}"
-  exec "sudo systemctl start ${name}"
-  exec "sudo systemctl status ${name}"
+  if [ ! -f /etc/init.d/${name} ]; then
+    exec "sudo ln -s ${sourceDir}/init /etc/init.d/${name}"
+    exec "sudo systemctl daemon-reload"
+    exec "sudo systemctl enable ${name}"
+    exec "sudo systemctl start ${name}"
+    exec "sudo systemctl status ${name}"
+  fi
   if [ -f ${sourceDir}/settings.json ]; then
     read -p "Do you want to change the configuration file(y/n)? " -n 1 -r
   else
@@ -799,7 +823,7 @@ pkg cifs-utils
 pkg curlftpfs
 import
 
-while getopts ":veaircf:s:d:" opt; do
+while getopts ":veaiurcf:s:d:" opt; do
 	case "${opt}"
 		in
 			a) ARCHIVE=true;;
@@ -808,6 +832,7 @@ while getopts ":veaircf:s:d:" opt; do
 			d) msgTo=$OPTARG;;
 			r) SENDrpt=true;;
 			c) clrformat;elements;;
+			u) uninstall;;
 			i) install;;
 			f)
 				set -f
@@ -852,7 +877,7 @@ shift $((OPTIND -1))
 # RUN SCRIPT
 #==============================================================================
 
-if [ "$installing" != "true" ]; then
+if [ "$canRun" == "true" ]; then
   main
   if (( $((duration / 60)) <= 0 )) && [[ "$DEBUG" != "true" ]]; then
     sleep 5m

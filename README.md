@@ -6,6 +6,8 @@ The script works as followed. The FTP and SMB shares are mounted. A cp transfer 
 
 ## Changelog
 
+ - Added a configuration file creator/editor
+ - Added a uninstall routine
  - Added support for FTPS transfer
  - A timeout was added to both mount command to prevent the script from getting stuck if an error occur during mounting.
  - Fixed the service file to be more dynamic. Specially when running multiple instances of the script.
@@ -30,6 +32,8 @@ Options:
 -d                     => Set report destination email
 -r                     => Send report via email
 -c                     => Disable all formatting
+-i                     => install and configure/reconfigure service
+-u                     => uninstall service
 -f                     => Specify a FTP ex: "ftp.domain.com username password"
 -s                     => Specify a SMB ex: "0.0.0.0 shareName destinationDirectory username password"
 ```
