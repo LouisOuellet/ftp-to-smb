@@ -245,7 +245,9 @@ function pkg(){
 }
 
 function send(){
-  exec "echo \"$2\" | s-nail -s \"$1\" -S smtp-use-ssl -S ssl-rand-file=/tmp/mail.entropy -S smtp-auth=login -S smtp=\"smtps://${smtpHost}:${smtpPort}\" -S from=\"${msgFrom}(${msgName})\" -S smtp-auth-user=\"${smtpUser}\" -S smtp-auth-password=\"${smtpPass}\" -S ssl-verify=ignore -a \"$logFile\" ${msgTo}"
+  if [[ "${smtpEncryption}" == "ssl" ]]; then encryption='-S smtp-use-ssl'; fi
+  if [[ "${smtpEncryption}" == "tls" ]]; then encryption='-S smtp-use-starttls'; fi
+  exec "echo \"$2\" | s-nail -s \"$1\" ${encryption} -S ssl-rand-file=/tmp/mail.entropy -S smtp-auth=login -S smtp=\"smtps://${smtpHost}:${smtpPort}\" -S from=\"${msgFrom}(${msgName})\" -S smtp-auth-user=\"${smtpUser}\" -S smtp-auth-password=\"${smtpPass}\" -S ssl-verify=ignore -a \"$logFile\" ${msgTo}"
 }
 
 #==============================================================================
@@ -278,6 +280,7 @@ function import(){
 	  smtpPort=$(jq -r '.smtp.port' ${sourceDir}/settings.json)
 		smtpUser=$(jq -r '.smtp.username' ${sourceDir}/settings.json)
 		smtpPass=$(jq -r '.smtp.password' ${sourceDir}/settings.json)
+    smtpEncryption=$(jq -r '.smtp.encryption' ${sourceDir}/settings.json)
 		msgName=$(jq -r '.report.name' ${sourceDir}/settings.json)
 		msgFrom=$(jq -r '.report.from' ${sourceDir}/settings.json)
 	  msgTo=$(jq -r '.report.to' ${sourceDir}/settings.json)
@@ -293,10 +296,12 @@ function import(){
 		ftpUser=$(jq -r '.ftp.username' ${sourceDir}/settings.json)
 		ftpPass=$(jq -r '.ftp.password' ${sourceDir}/settings.json)
 		ARCHIVE=$(jq -r '.archive' ${sourceDir}/settings.json)
+	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
 		if [ "$smtpHost" == null ]; then smtpHost=; fi
 		if [ "$smtpPort" == null ]; then smtpPort=; fi
 		if [ "$smtpUser" == null ]; then smtpUser=; fi
 		if [ "$smtpPass" == null ]; then smtpPass=; fi
+		if [ "$smtpEncryption" == null ]; then smtpEncryption=; fi
 		if [ "$msgName" == null ]; then msgName=; fi
 		if [ "$msgFrom" == null ]; then msgFrom=; fi
 		if [ "$msgTo" == null ]; then msgTo=; fi
@@ -313,7 +318,7 @@ function import(){
 		if [ "$ftpPass" == null ]; then ftpPass=; fi
 		if [ "$ARCHIVE" == null ]; then ARCHIVE=; fi
     if [ "$msgSend" == 'true' ]; then SENDrpt='true'; fi
-	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
+		if [ "$logDir" == null ]; then logDir='/tmp/'; fi
 		logFile="${logDir}$(date +%s%N).log"
 	else
 		echo "Unable to retrieve ${sourceDir}/settings.json."
@@ -534,6 +539,250 @@ function install(){
   exec "sudo systemctl enable ${name}"
   exec "sudo systemctl start ${name}"
   exec "sudo systemctl status ${name}"
+  if [ -f ${sourceDir}/settings.json ]; then
+    read -p "Do you want to change the configuration file(y/n)? " -n 1 -r
+  else
+    read -p "Do you want to create a configuration file(y/n)? " -n 1 -r
+  fi
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Let's start with the FTP Server"
+    host=
+    while [[ "${host}" == '' ]]; do
+      if [ "$ftpHost" != '' ]; then
+        read -p "What is the address of the server(${ftpHost})? " -r host
+        if [[ "$host" == '' ]]; then host=${ftpHost}; fi
+      else
+        read -p "What is the address of the server? " -r host
+      fi
+    done
+    port=
+    while [[ "${port}" == '' ]]; do
+      if [ "$ftpPort" != '' ]; then
+        read -p "Which port should I use(${ftpPort})? " -r myport
+        if [[ "$myport" == '' ]]; then port=${ftpPort}; fi
+        if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
+      else
+        read -p "Which port should I use(21)? " -r myport
+        if [[ "$myport" == '' ]]; then port=21; fi
+        if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
+      fi
+    done
+    username=
+    while [[ "${username}" == '' ]]; do
+      if [ "$ftpUser" != '' ]; then
+        read -p "What's the username(${ftpUser})? " -r username
+        if [[ "$username" == '' ]]; then username=${ftpUser}; fi
+      else
+        read -p "What's the username? " -r username
+      fi
+    done
+    password=
+    while [[ "${password}" == '' ]]; do
+      if [ "$ftpPass" != '' ]; then
+        read -p "And what's the password(${ftpPass})? " -s -r password
+        if [[ "$password" == '' ]]; then password=${ftpPass}; fi
+      else
+        read -p "And what's the password? " -r password
+      fi
+      echo
+    done
+    varFTP='  "ftp":{
+        "host": "'${host}'",
+        "port": "'${port}'",
+        "username": "'${username}'",
+        "password": "'${password}'"
+    }'
+    echo "Now let's configure the SMB share"
+    host=
+    while [[ "${host}" == '' ]]; do
+      if [ "$smbHost" != '' ]; then
+        read -p "What is the address of the server(${smbHost})? " -r host
+        if [[ "$host" == '' ]]; then host=${smbHost}; fi
+      else
+        read -p "What is the address of the server? " -r host
+      fi
+    done
+    share=
+    while [[ "${share}" == '' ]]; do
+      if [ "$smbShare" != '' ]; then
+        read -p "Which shared folder should I mount(${smbShare})? " -r share
+        if [[ "$share" == '' ]]; then share=${smbShare}; fi
+      else
+        read -p "Which shared folder should I mount? " -r share
+      fi
+    done
+    read -p "Do you have a subfolder to transfer the files into(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      destination=
+      while [[ "${destination}" == '' ]]; do
+        if [ "$smbDest" != '' ]; then
+          read -p "What is it(${smbDest})? " -r destination
+          if [[ "$destination" == '' ]]; then destination=${smbDest}; fi
+        else
+          read -p "What is it? " -r destination
+        fi
+      done
+    fi
+    read -p "Are you using an old version of SMB(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then version='1.0'; fi
+    username=
+    while [[ "${username}" == '' ]]; do
+      if [ "$smbUser" != '' ]; then
+        read -p "What's the username(${smbUser})? " -r username
+        if [[ "$username" == '' ]]; then username=${smbUser}; fi
+      else
+        read -p "What's the username? " -r username
+      fi
+    done
+    password=
+    while [[ "${password}" == '' ]]; do
+      if [ "$smbPass" != '' ]; then
+        read -p "And what's the password(${smbPass})? " -s -r password
+        if [[ "$password" == '' ]]; then password=${smbPass}; fi
+      else
+        read -p "And what's the password? " -s -r password
+      fi
+      echo
+    done
+    varSMB='  "smb":{
+        "host": "'${host}'",
+        "share": "'${share}'",
+        "destination": "'${destination}'",
+        "username": "'${username}'",
+        "password": "'${password}'",
+        "version": "'${version}'"
+    }'
+    read -p "Do you want to enable archive mode(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then varARCHIVE='  "archive":true'; fi
+    read -p "Do you want to change the log directory(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      directory=
+      while [[ "${directory}" == '' ]]; do
+        if [ "$logDir" != '' ]; then
+          read -p "What's the new directory(${logDir})? " -r directory
+          if [[ "$directory" == '' ]]; then directory=${smbHost}; fi
+        else
+          read -p "What's the new directory? " -r directory
+        fi
+      done
+      if [[ "${directory: -1}" != '/' ]]; then directory="${directory}/"; fi
+      varLOG='  "logs":{
+          "directory": "'${directory}'"
+      }'
+    fi
+    read -p "Do you want to enable reporting mode(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      echo "We'll need a SMTP Server"
+      host=
+      while [[ "${host}" == '' ]]; do
+        if [ "$smtpHost" != '' ]; then
+          read -p "What is the address of the server(${smtpHost})? " -r host
+          if [[ "$host" == '' ]]; then host=${smtpHost}; fi
+        else
+          read -p "What is the address of the server? " -r host
+        fi
+      done
+      port=
+      while [[ "${port}" == '' ]]; do
+        if [ "$smtpPort" != '' ]; then
+          read -p "Which port should I use(${smtpPort})? " -r myport
+          if [[ "$myport" == '' ]]; then port=${smtpPort}; fi
+          if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
+        else
+          read -p "Which port should I use(25)? " -r myport
+          if [[ "$myport" == '' ]]; then port=25; fi
+          if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
+        fi
+      done
+      while [[ "${encryption}" != "ssl" ]]&&[[ "${encryption}" != "SSL" ]]&&[[ "${encryption}" != "tls" ]]&&[[ "${encryption}" != "TLS" ]];do
+        if [ "$smtpEncryption" != '' ]; then
+          read -p "What type of encryption(ssl,tls)(${smtpEncryption})? " -r encryption
+          if [[ "$encryption" == '' ]]; then encryption=${smtpEncryption}; fi
+        else
+          read -p "What type of encryption(ssl,tls)? " -r encryption
+        fi
+        if [[ "${encryption}" == "ssl" ]]||[[ "${encryption}" == "SSL" ]]; then encryption='ssl'; fi
+        if [[ "${encryption}" == "tls" ]]||[[ "${encryption}" == "TLS" ]]; then encryption='tls'; fi
+      done
+      username=
+      while [[ "${username}" == '' ]]; do
+        if [ "$smtpUser" != '' ]; then
+          read -p "What's the username(${smtpUser})? " -r username
+          if [[ "$username" == '' ]]; then username=${smtpUser}; fi
+        else
+          read -p "What's the username? " -r username
+        fi
+      done
+      password=
+      while [[ "${password}" == '' ]]; do
+        if [ "$smtpPass" != '' ]; then
+          read -p "And what's the password(${smtpPass})? " -s -r password
+          if [[ "$password" == '' ]]; then password=${smtpPass}; fi
+        else
+          read -p "And what's the password? " -r password
+        fi
+        echo
+      done
+      varSMTP='  "smtp":{
+          "host": "'${host}'",
+          "port": "'${port}'",
+          "encryption": "'${encryption}'",
+          "username": "'${username}'",
+          "password": "'${password}'"
+      }'
+      echo "Let's setup the report"
+      name=
+      while [[ "${name}" == '' ]]; do
+        if [ "$msgName" != '' ]; then
+          read -p "How do you want to name the report(${msgName})? " -r name
+          if [[ "$name" == '' ]]; then name=${msgName}; fi
+        else
+          read -p "How do you want to name the report(FTP to SMB - Report)? " -r name
+          if [[ "$name" == '' ]]; then name='FTP to SMB - Report'; fi
+        fi
+      done
+      from=
+      while [[ "${from}" == '' ]]; do
+        if [ "$msgFrom" != '' ]; then
+          read -p "Who is it coming from(${msgFrom})? " -r from
+          if [[ "$from" == '' ]]; then from=${msgFrom}; fi
+        else
+          read -p "Who is it coming from(${username})? " -r from
+          if [[ "$from" == '' ]]; then from=${username}; fi
+        fi
+      done
+      to=
+      while [[ "${to}" == '' ]]; do
+        if [ "$msgTo" != '' ]; then
+          read -p "Who shall I send the report to(${msgTo})? " -r to
+          if [[ "$to" == '' ]]; then to=${msgTo}; fi
+        else
+          read -p "Who shall I send the report to? " -r to
+        fi
+      done
+      varREPORT='  "report":{
+          "name": "'${name}'",
+          "from": "'${from}'",
+          "to": "'${to}'",
+          "send": true
+      }'
+    fi
+    SETTINGS="{\n"
+    if [[ "${varFTP}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varFTP}; fi
+    if [[ "${varSMB}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varSMB}; fi
+    if [[ "${varARCHIVE}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varARCHIVE}; fi
+    if [[ "${varLOG}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varLOG}; fi
+    if [[ "${varSMTP}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varSMTP}; fi
+    if [[ "${varREPORT}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varREPORT}; fi
+    SETTINGS="${SETTINGS}\n}"
+    echo -e ${SETTINGS} > settings.json
+  fi
 }
 
 #==============================================================================
