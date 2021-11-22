@@ -299,6 +299,10 @@ function import(){
 		ftpPort=$(jq -r '.ftp.port' ${sourceDir}/settings.json)
 		ftpUser=$(jq -r '.ftp.username' ${sourceDir}/settings.json)
 		ftpPass=$(jq -r '.ftp.password' ${sourceDir}/settings.json)
+		convertStatus=$(jq -r '.conversion.status' ${sourceDir}/settings.json)
+		convertTransfer=$(jq -r '.conversion.transfer' ${sourceDir}/settings.json)
+		updateFiles=$(jq -r '.update' ${sourceDir}/settings.json)
+		frequency=$(jq -r '.frequency' ${sourceDir}/settings.json)
 		ARCHIVE=$(jq -r '.archive' ${sourceDir}/settings.json)
 	  logDir=$(jq -r '.logs.directory' ${sourceDir}/settings.json)
 		if [ "$smtpHost" == null ]; then smtpHost=; fi
@@ -310,6 +314,7 @@ function import(){
 		if [ "$msgFrom" == null ]; then msgFrom=; fi
 		if [ "$msgTo" == null ]; then msgTo=; fi
 		if [ "$msgSend" == null ]; then msgSend=; fi
+    if [ "$msgSend" == 'true' ]; then SENDrpt='true'; fi
 		if [ "$smbHost" == null ]; then smbHost=; fi
 		if [ "$smbShare" == null ]; then smbShare=; fi
 		if [ "$smbDest" == null ]; then smbDest=; fi
@@ -320,8 +325,11 @@ function import(){
 		if [ "$ftpPort" == null ]; then ftpPort=; fi
 		if [ "$ftpUser" == null ]; then ftpUser=; fi
 		if [ "$ftpPass" == null ]; then ftpPass=; fi
+		if [ "$convertStatus" == null ]; then convertStatus=; fi
+		if [ "$convertTransfer" == null ]; then convertTransfer=; fi
+		if [ "$frequency" == null ]; then frequency=0; fi
+		if [ "$updateFiles" == null ]; then updateFiles=; fi
 		if [ "$ARCHIVE" == null ]; then ARCHIVE=; fi
-    if [ "$msgSend" == 'true' ]; then SENDrpt='true'; fi
 		if [ "$logDir" == null ]; then logDir='/tmp/'; fi
 		logFile="${logDir}$(date +%s%N).log"
 	else
@@ -472,17 +480,27 @@ function start(){
           file=$(echo ${file} | sed -e 's/\.\///g')
           pattern=$(echo ${smbDest} | sed -e 's/\//\\\//g')
           transfer=$(echo ${file} | sed -e 's/\/tmp\/share\/ftp\//\/tmp\/share\/smb\/'${pattern}'/g')
-          exec "cp -vu \"${file}\" \"${transfer}\""
-          # exec "cp -v \"${file}\" \"${transfer}\""
+          if [ "$updateFiles" == "true" ]; then
+            exec "cp -vu \"${file}\" \"${transfer}\""
+          else
+            exec "cp -v \"${file}\" \"${transfer}\""
+          fi
           if [ "$ARCHIVE" = "true" ]; then
             exec "mkdir -p ${sourceDir}/tmp/share/ftp/archives"
             exec "mv -v \"${file}\" \"${sourceDir}/tmp/share/ftp/archives/\"."
           fi
-          if [[ "${transfer}" == *".csv" ]];then
+          if [[ "${transfer}" == *".csv" ]]&&[[ "${convertStatus}" == "true" ]];then
             excel=$(echo ${transfer} | sed -r 's/(.*).csv/\1.xlsx/')
             echo "Converting ${transfer} to ${excel}" | dbg i s
   					exec "eval ${sourceDir}/csv2xlsx -infile \"${transfer}\" -outfile \"${excel}\" -columns 0-14:text,15-17:number -silent -overwrite"
-            exec "cp -vu \"${excel}\" \"${sourceDir}/tmp/share/ftp/\".";
+            if [ "$convertTransfer" == "true" ]; then
+              gift=$(echo ${file} | sed -r 's/(.*).xlsx/\1.csv/')
+              if [ "$updateFiles" == "true" ]; then
+                exec "cp -vu \"${excel}\" \"${gift}\""
+              else
+                exec "cp -v \"${excel}\" \"${gift}\""
+              fi
+            fi
           fi
         done
 				echo "File transfer completed" | dbg i s
@@ -585,11 +603,11 @@ function install(){
     while [[ "${port}" == '' ]]; do
       if [ "$ftpPort" != '' ]; then
         read -p "Which port should I use(${ftpPort})? " -r myport
-        if [[ "$myport" == '' ]]; then port=${ftpPort}; fi
+        if [[ "$myport" == '' ]]; then myport=${ftpPort}; fi
         if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
       else
         read -p "Which port should I use(21)? " -r myport
-        if [[ "$myport" == '' ]]; then port=21; fi
+        if [[ "$myport" == '' ]]; then myport=21; fi
         if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
       fi
     done
@@ -683,7 +701,71 @@ function install(){
     read -p "Do you want to enable archive mode(y/n)? " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then varARCHIVE='  "archive":true'; fi
-    read -p "Do you want to change the log directory(y/n)? " -n 1 -r
+    if [ "$convertStatus" != '' ]; then
+      if [ "$convertStatus" == 'true' ]; then
+        read -p "Do you want to disable CSV conversion(y/n)? " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then status='false'; fi
+      else
+        read -p "Do you want to enable CSV conversion(y/n)? " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then status='true'; fi
+      fi
+    else
+      read -p "Do you want to enable CSV conversion(y/n)? " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then status='true'; fi
+    fi
+    if [ "$status" == 'true' ]; then
+      if [ "$convertTransfer" == 'true' ]; then
+        read -p "Do you want to disable the transfer of the XLSX file(y/n)? " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then transfer='false'; fi
+      else
+        read -p "Do you want to enable the transfer of the XLSX file(y/n)? " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then transfer='true'; fi
+      fi
+      if [ "$transfer" == 'true' ]; then
+        varCONVERSION='  "conversion":{
+            "status": "'${status}'",
+            "transfer": "'${transfer}'"
+        }'
+      else
+        varCONVERSION='  "conversion":{
+            "status": "'${status}'"
+        }'
+      fi
+    fi
+    read -p "Do you want to only transfer new files(y/n)? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then varUPDATE='  "update":true'; fi
+    if [ "$frequency" != '' ]; then
+      read -p "Do you want to change the frequency(y/n)? " -n 1 -r
+    else
+      read -p "Do you want to set a frequency(y/n)? " -n 1 -r
+    fi
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      finalfrequency=
+      while [[ "${finalfrequency}" == '' ]]; do
+        if [ "$frequency" != '' ]; then
+          read -p "What's the new frequency in seconds(${frequency})? " -r myfrequency
+          if [[ "$myfrequency" == '' ]]; then myfrequency=${frequency}; fi
+          if [[ $myfrequency =~ ^-?[0-9]+$ ]]; then finalfrequency=$myfrequency; fi
+        else
+          read -p "What's the new frequency in seconds(0)? " -r myport
+          if [[ "$myfrequency" == '' ]]; then myfrequency=0; fi
+          if [[ $myfrequency =~ ^-?[0-9]+$ ]]; then finalfrequency=$myfrequency; fi
+        fi
+      done
+      varFREQUENCY='  "frequency":'${finalfrequency}
+    fi
+    if [ "$logDir" != '' ]; then
+      read -p "Do you want to change the log directory(y/n)? " -n 1 -r
+    else
+      read -p "Do you want to set a log directory(y/n)? " -n 1 -r
+    fi
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
       directory=
@@ -717,11 +799,11 @@ function install(){
       while [[ "${port}" == '' ]]; do
         if [ "$smtpPort" != '' ]; then
           read -p "Which port should I use(${smtpPort})? " -r myport
-          if [[ "$myport" == '' ]]; then port=${smtpPort}; fi
+          if [[ "$myport" == '' ]]; then myport=${smtpPort}; fi
           if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
         else
           read -p "Which port should I use(25)? " -r myport
-          if [[ "$myport" == '' ]]; then port=25; fi
+          if [[ "$myport" == '' ]]; then myport=25; fi
           if [[ $myport =~ ^-?[0-9]+$ ]]; then port=$myport; fi
         fi
       done
@@ -799,12 +881,42 @@ function install(){
       }'
     fi
     SETTINGS="{\n"
-    if [[ "${varFTP}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varFTP}; fi
-    if [[ "${varSMB}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varSMB}; fi
-    if [[ "${varARCHIVE}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varARCHIVE}; fi
-    if [[ "${varLOG}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varLOG}; fi
-    if [[ "${varSMTP}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varSMTP}; fi
-    if [[ "${varREPORT}" != '' ]]; then if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi; SETTINGS=${SETTINGS}${varREPORT}; fi
+    if [[ "${varFTP}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varFTP}
+    fi
+    if [[ "${varSMB}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varSMB}
+    fi
+    if [[ "${varARCHIVE}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varARCHIVE}
+    fi
+    if [[ "${varFREQUENCY}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varFREQUENCY}
+    fi
+    if [[ "${varCONVERSION}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varCONVERSION}
+    fi
+    if [[ "${varUPDATE}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varUPDATE}
+    fi
+    if [[ "${varLOG}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varLOG}
+    fi
+    if [[ "${varSMTP}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varSMTP}
+    fi
+    if [[ "${varREPORT}" != '' ]]; then
+      if [[ "${SETTINGS: -3}" != ',\n' ]]&&[[ "${SETTINGS: -3}" != '{\n' ]]; then SETTINGS="${SETTINGS},\n"; fi
+      SETTINGS=${SETTINGS}${varREPORT}
+    fi
     SETTINGS="${SETTINGS}\n}"
     echo -e ${SETTINGS} > settings.json
   fi
@@ -881,7 +993,7 @@ shift $((OPTIND -1))
 if [ "$canRun" == "true" ]; then
   main
   if (( $((duration / 60)) <= 0 )) && [[ "$DEBUG" != "true" ]]; then
-    sleep 600
+    sleep ${frequency}
   fi
 fi
 

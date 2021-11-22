@@ -6,6 +6,11 @@ The script works as followed. The FTP and SMB shares are mounted. A cp transfer 
 
 ## Changelog
 
+ - Added a setting to control the frequency (in seconds)
+ - Added a setting to enable/disable the conversion of CSV files to XLSX files.
+ - Added a setting to enable/disable the transfer of the converted CSV file back to the FTP.
+ - Added a setting to control wether to update files or completely overwrite them
+ - The directory of the transferred CSV converted file changed to the original location of the CSV file
  - Added a configuration file creator/editor
  - Added a uninstall routine
  - Added support for FTPS transfer
@@ -16,11 +21,7 @@ The script works as followed. The FTP and SMB shares are mounted. A cp transfer 
 
 ## To Do?
 
- - Add a setting for frequency (in seconds)
- - Add a setting to enable/disable the conversion of CSV file.
- - Add a setting to control wether to update or not local files.
- - Add a setting to enable/disable the transfer of the converted CSV file.
- - change the directory of the now transfered converted CSV file to the same as the original.
+ - 
 
 ## Usage
 ``` bash
