@@ -558,19 +558,19 @@ function main(){
 
 function uninstall(){
   canRun="false";
-  if [ -f /etc/init.d/${name} ]; then
-    exec "sudo systemctl status ${name}"
-    exec "sudo systemctl stop ${name}"
-    exec "sudo systemctl disable ${name}"
-    exec "sudo rm /etc/init.d/${name}"
-    exec "sudo systemctl daemon-reload"
-  fi
   if [ -f ${sourceDir}/settings.json ]; then
     read -p "Do you want to remove configuration file(y/n)? " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
       exec "rm ${sourceDir}/settings.json"
     fi
+  fi
+  if [ -f /etc/init.d/${name} ]; then
+    exec "sudo systemctl status ${name}"
+    exec "sudo systemctl stop ${name}"
+    exec "sudo systemctl disable ${name}"
+    exec "sudo rm /etc/init.d/${name}"
+    exec "sudo systemctl daemon-reload"
   fi
 }
 
