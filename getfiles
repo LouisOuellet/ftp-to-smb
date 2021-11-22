@@ -126,6 +126,8 @@ function help(){
                             This mode moves the transferred file in an archive folder
 	-v                     => Enable Reporting Mode
 	                          Input commands sent are stored in ${logFile}
+	-p                     => Only update local files
+  -x                     => Convert CSV files
 	-e                     => Compile errors and warnings after execution
 	-d                     => Set report destination email
 	-r                     => Send report via email
@@ -936,12 +938,14 @@ pkg cifs-utils
 pkg curlftpfs
 import
 
-while getopts ":veaiurcf:s:d:" opt; do
+while getopts ":veapxiurcf:s:d:" opt; do
 	case "${opt}"
 		in
 			a) ARCHIVE=true;;
 			v) DEBUG=true;;
 			e) ERRORrpt=true;;
+			p) updateFiles=true;;
+			x) convertStatus=true;;
 			d) msgTo=$OPTARG;;
 			r) SENDrpt=true;;
 			c) clrformat;elements;;
