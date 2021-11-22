@@ -702,7 +702,6 @@ function install(){
     }'
     read -p "Do you want to enable archive mode(y/n)? " -n 1 -r
     echo
-    status=
     if [[ $REPLY =~ ^[Yy]$ ]]; then varARCHIVE='  "archive":true'; fi
     if [ "$convertStatus" != '' ]; then
       if [ "$convertStatus" == 'true' ]; then
