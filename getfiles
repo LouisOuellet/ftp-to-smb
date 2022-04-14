@@ -416,15 +416,21 @@ function mountFTP(){
 		# exec "rm -vr ${sourceDir}/tmp/share/ftp"
 		exec "mkdir -p ${sourceDir}/tmp/share/ftp"
 	fi
-  CMD='sudo curlftpfs'
-  HEAD='ftp://'
-  if [ "${DEBUG}" = "true" ]; then
-    CMD="${CMD} -v"
+  if [ "${ftpPort}" = "22" ]; then
+    if [ -f "/root/.ssh/id_rsa" ]; then
+      exec "sudo sshfs -o allow_other,default_permissions,IdentityFile=/root/.ssh/id_rsa ${USER}@${ftpHost}:/ ${sourceDir}/tmp/share/ftp"
+    fi
+  else
+    CMD='sudo curlftpfs'
+    HEAD='ftp://'
+    if [ "${DEBUG}" = "true" ]; then
+      CMD="${CMD} -v"
+    fi
+    if [ "${ftpPort}" = "990" ]; then
+      HEAD='ftps://'
+    fi
+    exec "${CMD} -o user='${ftpUser}:${ftpPass}' ${HEAD}${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
   fi
-  if [ "${ftpPort}" = "990" ]; then
-    HEAD='ftps://'
-  fi
-  exec "${CMD} -o user='${ftpUser}:${ftpPass}' ${HEAD}${ftpHost}:${ftpPort} ${sourceDir}/tmp/share/ftp -o rw,uid=$(id -u $USER),gid=$(id -g $USER),ssl_try,no_verify_peer,tcp_nodelay,no_verify_hostname,connect_timeout=60,allow_other"
 }
 
 function mountSMB(){
@@ -936,6 +942,7 @@ pkg zenity
 pkg yad
 pkg cifs-utils
 pkg curlftpfs
+pkg sshfs
 import
 
 while getopts ":veapxiurcf:s:d:" opt; do
