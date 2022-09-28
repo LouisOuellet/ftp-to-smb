@@ -419,6 +419,8 @@ function mountFTP(){
   if [ "${ftpPort}" = "22" ]; then
     if [ -f "/root/.ssh/id_rsa" ]; then
       exec "sudo sshfs -o allow_other,default_permissions,IdentityFile=/root/.ssh/id_rsa ${ftpUser}@${ftpHost}:/ ${sourceDir}/tmp/share/ftp"
+    else
+      echo "Unable to locate a ssh key in /root/.ssh/id_rsa" | dbg e t
     fi
   else
     CMD='sudo curlftpfs'
